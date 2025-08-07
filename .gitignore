@@ -1,0 +1,9 @@
+# Visual Studio files
+.vs/
+*.suo
+*.sqlite
+VSWorkspaceState.json
+
+# Build folders
+bin/
+obj/
