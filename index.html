@@ -1,121 +1,23 @@
 ﻿<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta charset="UTF-8">
     <title>Redsun</title>
-    <meta name="description" content="Redsun builds fast-paced mobile games!" />
-    <link rel="stylesheet" href="assets/css/styles.css" />
+    <link rel="stylesheet" href="assets/css/styles.css">
 </head>
 <body>
-    <header class="site-header">
-        <div class="brand">
-            <span class="logo">🟥</span>
-            <span class="brand-name">Redsun</span>
-        </div>
-        <nav class="nav">
-            <a href="index.html" class="active">Home</a>
+    <header>
+        <h1>Redsun</h1>
+        <nav>
+            <a href="index.html">Home</a>
             <a href="apps.html">Our Games</a>
-            <a href="#about">About</a>
-            <a href="#contact">Contact</a>
-            <button id="themeToggle" aria-label="Toggle dark mode">🌙</button>
         </nav>
-        <button class="hamburger" id="hamburger" aria-label="Toggle menu">☰</button>
     </header>
-
-    <!-- HERO -->
-    <section class="hero">
-        <div class="hero-inner">
-            <h1>Fast-paced Mobile Games</h1>
-            <p>Redsun makes quick-to-learn, hard-to-master arcade games.</p>
-            <div class="cta-row">
-                <a class="btn" href="apps.html">See Our Games →</a>
-                <a class="btn ghost" href="https://play.google.com/store/apps/details?id=redsun.skydash" target="_blank" rel="noopener">Play Sky Dash</a>
-            </div>
-        </div>
-    </section>
-
-    <!-- FEATURED GAME -->
-    <section class="featured">
-        <div class="featured-card">
-            <img src="assets/images/sky-dash.png" alt="Sky Dash gameplay" class="featured-img">
-            <div class="featured-content">
-                <h2>Featured: Sky Dash — Jetpack Hero</h2>
-                <p>Soar past obstacles, collect coins, and chain power-ups. Compete on global leaderboards!</p>
-                <ul class="bullets">
-                    <li>Invincibility, Magnet & Double-Coin power-ups</li>
-                    <li>Google Play Games sign-in & leaderboards</li>
-                    <li>Optimized for mobile performance</li>
-                </ul>
-                <a class="btn" href="https://play.google.com/store/apps/details?id=redsun.skydash" target="_blank" rel="noopener">Get it on Google Play</a>
-            </div>
-        </div>
-    </section>
-
-    <!-- HIGHLIGHTS -->
-    <section class="highlights">
-        <div class="highlight">
-            <h3>Responsive Controls</h3>
-            <p>Snappy inputs, clean hitboxes, satisfying boosts.</p>
-        </div>
-        <div class="highlight">
-            <h3>Replayable Loops</h3>
-            <p>Short sessions, long mastery. Procedural variety keeps runs fresh.</p>
-        </div>
-        <div class="highlight">
-            <h3>Fair & Transparent</h3>
-            <p>Clear goals and skill-based progress. No nonsense.</p>
-        </div>
-    </section>
-
-    <!-- LATEST NEWS -->
-    <section class="news">
-        <h2>Latest News</h2>
-        <ul class="news-list">
-            <li><time datetime="2025-08-07">Aug 7, 2025</time> – Sky Dash production release approved 🎉</li>
-            <li><time datetime="2025-08-05">Aug 5, 2025</time> – Website launched at kculrehs.github.io</li>
-            <li><time datetime="2025-07-30">Jul 30, 2025</time> – New power-up balance pass and polish</li>
-        </ul>
-    </section>
-
-    <!-- ABOUT -->
-    <section id="about" class="about">
-        <h2>About Redsun</h2>
-        <p>
-            We’re a tiny studio focused on punchy, mobile-first arcade games. Our goal is silky performance,
-            readable art, and mechanics that respect your time.
-        </p>
-    </section>
-
-    <!-- CONTACT -->
-    <section id="contact" class="contact">
-        <h2>Contact</h2>
-        <p>Want to test new builds or chat about collaborations?</p>
-        <div class="contact-actions">
-            <a class="btn" href="mailto:contact@yourdomain.example">Email Us</a>
-            <a class="btn ghost" href="https://youtube.com/@redsunnev3544" target="_blank" rel="noopener">YouTube</a>
-        </div>
-    </section>
-
-    <footer class="site-footer">
-        <p>© 2025 Redsun</p>
-    </footer>
-
-    <script>
-    // mobile menu
-    const hamburger = document.getElementById('hamburger');
-    const nav = document.querySelector('.nav');
-    hamburger.addEventListener('click', () => nav.classList.toggle('open'));
-
-    // dark mode toggle
-    const themeToggle = document.getElementById('themeToggle');
-    const root = document.documentElement;
-    const stored = localStorage.getItem('theme') || 'light';
-    if (stored === 'dark') root.classList.add('dark');
-    themeToggle.addEventListener('click', () => {
-      root.classList.toggle('dark');
-      localStorage.setItem('theme', root.classList.contains('dark') ? 'dark' : 'light');
-    });
-    </script>
+    <main>
+        <h2>Welcome to Redsun</h2>
+        <p>We build fast-paced mobile games!</p>
+        <a class="btn" href="apps.html">See Our Apps →</a>
+    </main>
+    <footer>© 2025 Redsun</footer>
 </body>
 </html>
