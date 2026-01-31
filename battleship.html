@@ -514,75 +514,92 @@
 
     setRoomStatus(`Joined room: ${roomId}`);
     mpListen(roomId);
-  }
-
-  function mpListen(roomId){
-    const FB = window.RSFB;
-    if(!FB) return;
-
-    const roomRef = FB.ref(FB.db, `rooms/${roomId}`);
-    if(mp.unsub) mp.unsub();
-
-    const unsub = FB.onValue(roomRef, (snap) => {
-      if(!snap.exists()) return;
-      mp.remote = snap.val();
-      mpApplyRemote();
-    });
-
-    mp.unsub = unsub;
-  }
-
-  function mpApplyRemote(){
-    const r = mp.remote;
-    if(!r) return;
-
-    // Update your UI based on room state
-    const phase = r.public?.phase || "placing";
-    const turn  = r.public?.turn ?? 0;
-
-    // Example: sync shoot-again toggle
-    const shootAgainChk = document.getElementById("shootAgain");
-    if(shootAgainChk){
-      shootAgainChk.checked = !!r.public?.shootAgainOnHit;
     }
-    
-  async function mpSavePlacementIfOnline(board){
-    if(!mp.enabled || !mp.roomId || !window.RSFB) return;
-    const FB = window.RSFB;
 
-    // minimal placement: ship cells only
-    const placement = board.ships.map(s => ({ name: s.name, len: s.len, cells: s.cells }));
+    // ---------------- Listen to room ----------------
+    function mpListen(roomId){
+      const FB = window.RSFB;
+      if(!FB) return;
 
-    await FB.set(FB.ref(FB.db, `rooms/${mp.roomId}/private/${mp.uid}/placement`), {
-      uid: mp.uid,
-      slot: mp.slot,
-      placement,
-      savedAt: Date.now()
-    });
+      const roomRef = FB.ref(FB.db, `rooms/${roomId}`);
+      if(mp.unsub) mp.unsub();
 
-    await FB.update(FB.ref(FB.db, `rooms/${mp.roomId}/players/${mp.slot}`), {
-      ready: true
-    });
+      const unsub = FB.onValue(roomRef, (snap) => {
+        if(!snap.exists()) return;
+        mp.remote = snap.val();
+        mpApplyRemote();
+      });
 
-    mp.ready = true;
-    setRoomStatus("Placement saved. Waiting for opponent...");
-  }
-
-  function maybeSavePlacementOnline(placingPlayer){
-    if(!mp.enabled) return;
-    const board = state.boards[placingPlayer];
-    if(allShipsPlaced(board) && !mp.ready){
-      mpSavePlacementIfOnline(board);
+      mp.unsub = unsub;
     }
-  }
 
-    // Example: show room status
-    setRoomStatus(`Room ${mp.roomId} • Phase: ${phase} • Turn: P${turn+1}`);
+    // ---------------- Apply remote state ----------------
+    function mpApplyRemote(){
+      const r = mp.remote;
+      if(!r) return;
 
-    // TODO: in your existing code, map phase/turn into your local state
-    // - placing -> each player places privately
-    // - battle -> use moves feed
-  }
+      // Update your UI based on room state
+      const phase = r.public?.phase || "placing";
+      const turn  = r.public?.turn ?? 0;
+
+      // Sync shoot-again toggle
+      const shootAgainChk = document.getElementById("shootAgain");
+      if(shootAgainChk){
+        shootAgainChk.checked = !!r.public?.shootAgainOnHit;
+      }
+
+      // Show room status
+      setRoomStatus(`Room ${mp.roomId} • Phase: ${phase} • Turn: P${turn+1}`);
+
+      // ✅ Step 7: auto-start battle when both ready
+      const p0Ready = !!r.players?.["0"]?.ready;
+      const p1Ready = !!r.players?.["1"]?.ready;
+
+      if(p0Ready && p1Ready && r.public?.phase === "placing"){
+        window.RSFB.update(
+          window.RSFB.ref(window.RSFB.db, `rooms/${mp.roomId}/public`),
+          { phase: "battle", turn: 0, winner: null }
+        );
+      }
+
+      // (Optional later) map firebase phase/turn into your local state
+      // e.g. if(phase === "battle"){ state.phase="battle"; state.turn=turn; renderAll(false); }
+    }
+
+    // ---------------- Online placement save (PRIVATE) ----------------
+    async function mpSavePlacementIfOnline(board){
+      if(!mp.enabled || !mp.roomId || !window.RSFB) return;
+      const FB = window.RSFB;
+
+      // minimal placement: ship cells only
+      const placement = board.ships.map(s => ({
+        name: s.name,
+        len: s.len,
+        cells: s.cells
+      }));
+
+      await FB.set(FB.ref(FB.db, `rooms/${mp.roomId}/private/${mp.uid}/placement`), {
+        uid: mp.uid,
+        slot: mp.slot,
+        placement,
+        savedAt: Date.now()
+      });
+
+      await FB.update(FB.ref(FB.db, `rooms/${mp.roomId}/players/${mp.slot}`), {
+        ready: true
+      });
+
+      mp.ready = true;
+      setRoomStatus("Placement saved. Waiting for opponent...");
+    }
+
+    function maybeSavePlacementOnline(placingPlayer){
+      if(!mp.enabled) return;
+      const board = state.boards[placingPlayer];
+      if(allShipsPlaced(board) && !mp.ready){
+        mpSavePlacementIfOnline(board);
+      }
+    }
 
   // ---------- Tiny Sound Engine ----------
   let audioCtx = null;
