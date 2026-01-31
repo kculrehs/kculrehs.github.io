@@ -390,13 +390,17 @@
       limit(100)
     );
 
-    onSnapshot(top100Query, (snap) => {
-      const rows = snap.docs.map(d => d.data());
-      renderLeaderboard(rows);
-    }, (err) => {
+    onSnapshot(
+    top100Query,
+    (snap) => {
+    const rows = snap.docs.map((d) => d.data());
+    renderLeaderboard(rows);
+    },
+    (err) => {
       console.error("Leaderboard onSnapshot error:", err);
       lbListEl.innerHTML = `<div class="lbEmpty">Leaderboard error. Check console.</div>`;
-    });
+    }
+    );
 
     // --------------------------
     // Auth + IGN Profile
@@ -854,4 +858,5 @@
   </script>
 </body>
 </html>
+
 
