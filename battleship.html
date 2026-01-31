@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Battleship (Touch + Q/E Rotate + Sunk Labels)</title>
+  <title>Battleship (Fog of War • Touch • Smarter AI • Extra Turn on Hit)</title>
   <style>
     :root{
       --bg:#0b1020; --panel:#121a33; --text:#e7ecff; --muted:#a9b2d6;
@@ -33,12 +33,12 @@
     }
     .controls{flex: 1 1 380px; min-width:340px}
     .boards{flex: 2 1 650px; min-width:320px}
-    .controls h2,.boards h2{font-size:14px; margin:0 0 10px 0; color:var(--muted); font-weight:600}
+    .controls h2,.boards h2{font-size:14px; margin:0 0 10px 0; color:var(--muted); font-weight:700}
     .line{display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin:8px 0}
     button, select{
       background:#1a2552; color:var(--text); border:1px solid #2b3a85;
       padding:9px 11px; border-radius:10px; cursor:pointer;
-      font-weight:600;
+      font-weight:700;
     }
     button:hover{border-color:#3f5dff}
     button:disabled{opacity:.55; cursor:not-allowed}
@@ -53,13 +53,13 @@
       border:1px solid #2b3a85; background:rgba(15,26,63,.55);
       line-height:1.35;
     }
-    .status .big{font-size:14px; font-weight:700; color:var(--text)}
+    .status .big{font-size:14px; font-weight:800; color:var(--text)}
     .status .small{font-size:13px; color:var(--muted)}
     .help{font-size:12.5px; color:var(--muted); margin-top:8px; line-height:1.35}
     .gridWrap{display:flex; flex-wrap:wrap; gap:14px}
     .boardBox{flex:1 1 320px; min-width:300px}
     .boardTitle{display:flex; align-items:center; justify-content:space-between; margin-bottom:8px}
-    .boardTitle .label{font-weight:700}
+    .boardTitle .label{font-weight:800}
     .legend{display:flex; gap:8px; flex-wrap:wrap; font-size:12px; color:var(--muted)}
     .key{display:flex; align-items:center; gap:6px}
     .sw{width:12px; height:12px; border-radius:4px; border:1px solid #22306a}
@@ -71,11 +71,11 @@
     canvas{
       width:100%; max-width:420px; aspect-ratio:1/1; height:auto;
       border-radius:12px; border:1px solid #22306a; background:rgba(10,14,28,.5);
-      touch-action: none; /* important for touch pointer tracking */
+      touch-action: none;
     }
     .turnBadge{
       padding:6px 10px; border-radius:999px; border:1px solid #2b3a85;
-      background:rgba(106,169,255,.15); color:var(--text); font-weight:800; font-size:12px;
+      background:rgba(106,169,255,.15); color:var(--text); font-weight:900; font-size:12px;
     }
     .shipTray{
       margin-top:10px;
@@ -85,7 +85,7 @@
     }
     .shipTrayTitle{
       display:flex; align-items:center; justify-content:space-between;
-      margin-bottom:8px; color:var(--muted); font-size:12.5px; font-weight:800;
+      margin-bottom:8px; color:var(--muted); font-size:12.5px; font-weight:900;
     }
     .shipList{display:flex; flex-direction:column; gap:8px}
     .shipItem{
@@ -93,9 +93,7 @@
       padding:8px 10px;
       border:1px solid #2b3a85; border-radius:10px;
       background:rgba(26,37,82,.45);
-      cursor:grab;
-      user-select:none;
-      outline:none;
+      cursor:grab; user-select:none; outline:none;
     }
     .shipItem:active{cursor:grabbing}
     .shipItem[aria-disabled="true"]{opacity:.45; cursor:not-allowed}
@@ -112,21 +110,17 @@
     }
     .hint{
       font-size:12px; color:var(--muted);
-      margin-top:8px;
-      line-height:1.35;
+      margin-top:8px; line-height:1.35;
     }
     .warn{color:var(--warn)}
     .kbd{
       display:inline-block;
       padding:1px 6px;
-      border:1px solid #2b3a85;
-      border-bottom-width:2px;
+      border:1px solid #2b3a85; border-bottom-width:2px;
       border-radius:7px;
       background:rgba(26,37,82,.55);
-      font-weight:800;
-      font-size:12px;
-      margin:0 2px;
-      color:var(--text);
+      font-weight:900; font-size:12px;
+      margin:0 2px; color:var(--text);
     }
   </style>
 </head>
@@ -177,13 +171,14 @@
 
         <div class="hint">
           Desktop: drag a ship onto the board. Right-click the board to rotate while hovering.<br/>
-          Touch: tap a ship to pick it up, move your finger on the board for preview, tap to drop.<br/>
-          Rotate: <span class="kbd">Q</span> / <span class="kbd">E</span> (or <span class="kbd">R</span>).
+          Touch: tap a ship to select, move finger on board for preview, tap to drop.<br/>
+          Rotate: <span class="kbd">Q</span> / <span class="kbd">E</span> (or <span class="kbd">R</span>).<br/>
+          During battle: placements are hidden (fog of war).
         </div>
       </div>
 
       <div class="help">
-        <div><strong>Shooting:</strong> Click enemy board. Hits red, misses gray, sunk <span class="warn">gold</span> + label.</div>
+        <div><strong>Turns:</strong> Hit = shoot again. Miss = turn switches.</div>
       </div>
     </div>
 
@@ -232,7 +227,7 @@
     { key:"destroyer",  name:"Destroyer",  len:2 },
   ];
 
-  // Shots: 0 none, 1 miss, 2 hit, 3 sunk (highlight)
+  // Shots: 0 none, 1 miss, 2 hit, 3 sunk
   function makeBoard() {
     return {
       ships: Array.from({length: SIZE}, () => Array(SIZE).fill(0)),
@@ -300,13 +295,13 @@
     passTarget: null, // p1 | p2
     p1: makeBoard(),
     p2: makeBoard(),
-    // drag/touch placement state:
-    draggingShipKey: null,     // for HTML5 drag
-    selectedShipKey: null,     // for touch/tap selection
+    // placement input state:
+    draggingShipKey: null,     // HTML5 drag
+    selectedShipKey: null,     // tap-to-select
     hoverCells: null,
     hoverOk: true,
-    lastHoverAnchor: null,     // {r,c} used to recompute hover on rotate
-    // Smarter AI state
+    lastHoverAnchor: null,     // {r,c} for snap-to-grid hover
+    // Smarter CPU AI
     cpuAI: {
       huntList: [],
       targetQueue: [],
@@ -319,7 +314,6 @@
   function inBounds(r,c){ return r>=0 && r<SIZE && c>=0 && c<SIZE; }
   function setStatus(title, text){ statusTitle.textContent = title; statusText.textContent = text; }
   function setTurnBadge(text){ turnLabel.textContent = text; }
-
   function shipByKey(key){ return SHIPS.find(s => s.key===key) || null; }
   function hasShipPlaced(board, shipKey){ return board.shipsPlaced.some(s => s.key === shipKey); }
 
@@ -451,23 +445,20 @@
     const cell = w / SIZE;
 
     ctx.save();
-    ctx.font = "700 11px system-ui, -apple-system, Segoe UI, Roboto, Arial";
+    ctx.font = "800 11px system-ui, -apple-system, Segoe UI, Roboto, Arial";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
     for(const ship of board.shipsPlaced){
-      // sunk if all cells are 3 (we mark on sink)
       const sunk = ship.cells.every(p => board.shots[p.r][p.c]===3);
       if(!sunk) continue;
 
-      // centroid of cells
       const avgR = ship.cells.reduce((a,p)=>a+p.r,0)/ship.cells.length;
       const avgC = ship.cells.reduce((a,p)=>a+p.c,0)/ship.cells.length;
 
       const x = (avgC + 0.5) * cell;
       const y = (avgR + 0.5) * cell;
 
-      // shadow + gold text
       ctx.fillStyle = "rgba(0,0,0,.55)";
       ctx.fillText(ship.name, x+1, y+1);
       ctx.fillStyle = "rgba(255,183,3,.98)";
@@ -484,7 +475,7 @@
     ctx.fillStyle = "rgba(15,26,63,.85)";
     ctx.fillRect(0,0,w,h);
 
-    // Hover ghost
+    // hover ghost (placement only)
     if(hoverCells){
       ctx.fillStyle = hoverOk ? "rgba(106,169,255,.22)" : "rgba(255,92,122,.18)";
       for(const {r,c} of hoverCells){
@@ -492,7 +483,7 @@
       }
     }
 
-    // Ships
+    // ships (only in placement; NEVER in battle)
     if(showShips){
       ctx.fillStyle = "rgba(138,160,255,.85)";
       for(let r=0;r<SIZE;r++){
@@ -504,7 +495,7 @@
       }
     }
 
-    // Shots
+    // shots
     for(let r=0;r<SIZE;r++){
       for(let c=0;c<SIZE;c++){
         const s = board.shots[r][c];
@@ -535,10 +526,10 @@
       }
     }
 
-    // Labels for sunk ships (after shots)
+    // labels for sunk ships
     drawSunkLabels(ctx, board);
 
-    // Grid
+    // grid
     ctx.strokeStyle = "rgba(43,54,102,1)";
     ctx.lineWidth = 1;
     for(let i=0;i<=SIZE;i++){
@@ -553,24 +544,25 @@
     modeLabel.textContent = mode === "cpu" ? "Vs Computer" : "Local 2-Player";
     orientLabel.textContent = "Orientation: " + (State.orientation==="H" ? "Horizontal" : "Vertical");
 
-    // visibility rules
-    let showP1Ships = true, showP2Ships = false;
-    if(phase==="pass"){ showP1Ships=false; showP2Ships=false; }
+    // === Ship visibility rules ===
+    // Placement phase: show your own ships for placement.
+    // Battle phase: HIDE ALL ship placements (fog of war).
+    // Pass: hide everything.
+    // Gameover: show everything (change if you want fog on gameover too).
+    let showP1Ships=false, showP2Ships=false;
     if(phase==="p1_place"){ showP1Ships=true; showP2Ships=false; }
     if(phase==="p2_place"){ showP1Ships=false; showP2Ships=true; }
-    if(phase==="battle"){
-      showP1Ships = (turn==="p1");
-      showP2Ships = (turn==="p2");
-    }
+    if(phase==="pass"){ showP1Ships=false; showP2Ships=false; }
+    if(phase==="battle"){ showP1Ships=false; showP2Ships=false; } // <-- Fog of war during gameplay
     if(phase==="gameover"){ showP1Ships=true; showP2Ships=true; }
 
     // labels
     if(mode==="cpu"){
-      ownLabel.textContent = (phase==="battle" && turn==="p2") ? "Computer Fleet" : "Your Fleet";
-      enemyLabel.textContent = (phase==="battle" && turn==="p2") ? "Your Waters" : "Enemy Waters";
+      ownLabel.textContent = "Your Board";
+      enemyLabel.textContent = "Enemy Board";
     } else {
-      ownLabel.textContent = (phase==="battle" && turn==="p2") ? "Player 2 Fleet" : "Player 1 Fleet";
-      enemyLabel.textContent = (phase==="battle" && turn==="p2") ? "Player 1 Waters" : "Player 2 Waters";
+      ownLabel.textContent = (phase==="battle" && turn==="p2") ? "Player 2 Board" : "Player 1 Board";
+      enemyLabel.textContent = (phase==="battle" && turn==="p2") ? "Player 1 Board" : "Player 2 Board";
     }
 
     // map canvases to current player view
@@ -635,7 +627,7 @@
     renderShipTray();
   }
 
-  // ====== Ship tray (drag sources + touch tap-to-select) ======
+  // ====== Ship tray ======
   function renderShipTray(){
     const placing = (State.phase==="p1_place" || State.phase==="p2_place");
     const board = (State.phase==="p1_place") ? State.p1 : (State.phase==="p2_place" ? State.p2 : null);
@@ -647,7 +639,6 @@
       const item = document.createElement("div");
       item.className = "shipItem";
       if(State.selectedShipKey === ship.key) item.classList.add("selected");
-
       item.setAttribute("draggable", (placing && !placed) ? "true" : "false");
       item.setAttribute("aria-disabled", (!placing || placed) ? "true" : "false");
       item.dataset.shipKey = ship.key;
@@ -682,7 +673,6 @@
       item.appendChild(left);
       item.appendChild(right);
 
-      // desktop drag
       item.addEventListener("dragstart", (e)=>{
         if(!placing || placed) { e.preventDefault(); return; }
         State.draggingShipKey = ship.key;
@@ -697,11 +687,10 @@
         render();
       });
 
-      // touch/tap select
+      // Tap-to-select (touch-friendly)
       item.addEventListener("pointerdown", (e)=>{
         if(!placing || placed) return;
         ensureAudio();
-        // tapping selects; tapping again deselects
         State.selectedShipKey = (State.selectedShipKey === ship.key) ? null : ship.key;
         State.draggingShipKey = null;
         State.hoverCells = null;
@@ -710,18 +699,6 @@
         updatePlacementStatus();
         render();
         e.preventDefault();
-      });
-
-      // keyboard select
-      item.addEventListener("keydown", (e)=>{
-        if(e.key==="Enter" || e.key===" "){
-          e.preventDefault();
-          if(!placing || placed) return;
-          ensureAudio();
-          State.selectedShipKey = (State.selectedShipKey === ship.key) ? null : ship.key;
-          updatePlacementStatus();
-          render();
-        }
       });
 
       shipListEl.appendChild(item);
@@ -777,8 +754,8 @@
     State.lastHoverAnchor = null;
     resetCpuAI();
     setStatus("Battle started", State.mode==="cpu"
-      ? "Click the enemy board (right) to fire."
-      : "Player 1 goes first. Click Player 2's board (right) to fire."
+      ? "Click the enemy board (right) to fire. Hit = go again."
+      : "Player 1 goes first. Click Player 2's board (right) to fire. Hit = go again."
     );
     render();
   }
@@ -797,21 +774,7 @@
     render();
   }
 
-  // ====== Placement logic ======
-  function tryPlaceAt(r,c, shipKey){
-    const board = placingBoard();
-    const ship = shipByKey(shipKey);
-    if(!ship) return {ok:false, msg:"Unknown ship."};
-    if(hasShipPlaced(board, ship.key)) return {ok:false, msg:"That ship is already placed."};
-
-    const cells = cellsForPlacement(r,c,ship.len,State.orientation);
-    if(!cells) return {ok:false, msg:"Out of bounds."};
-    if(!canPlace(board,cells)) return {ok:false, msg:"Ships can't overlap or touch."};
-
-    placeShip(board, ship, cells);
-    return {ok:true, msg:`Placed ${ship.name}.`};
-  }
-
+  // ====== Placement status + hover recompute ======
   function updatePlacementStatus(){
     if(!(State.phase==="p1_place" || State.phase==="p2_place")) return;
 
@@ -831,7 +794,7 @@
     if(selected){
       setStatus(
         who,
-        `Selected: ${selected.name} (${selected.len}). Move over the board for preview, tap/click to place. Rotate: Q/E/R.`
+        `Selected: ${selected.name} (${selected.len}). Move over board for preview, tap/click to place. Rotate: Q/E/R.`
       );
     } else {
       setStatus(
@@ -862,12 +825,11 @@
     render();
   }
 
-  // ====== Rotate controls (Q/E + R + button + right-click while hovering) ======
+  // ====== Rotation (Q/E/R + button + right-click) ======
   function rotate(){
     State.orientation = (State.orientation==="H") ? "V" : "H";
-    orientLabel.textContent = "Orientation: " + (State.orientation==="H" ? "Horizontal" : "Vertical");
     updatePlacementStatus();
-    recomputeHover(); // keep snap-to-grid hover updated
+    recomputeHover();
     render();
   }
 
@@ -881,7 +843,6 @@
     }
   });
 
-  // Right-click rotate while hovering (own board during placement)
   ownCanvas.addEventListener("contextmenu", (e)=>{
     if(!(State.phase==="p1_place" || State.phase==="p2_place")) return;
     e.preventDefault();
@@ -924,6 +885,20 @@
     render();
   });
 
+  function tryPlaceAt(r,c, shipKey){
+    const board = placingBoard();
+    const ship = shipByKey(shipKey);
+    if(!ship) return {ok:false, msg:"Unknown ship."};
+    if(hasShipPlaced(board, ship.key)) return {ok:false, msg:"That ship is already placed."};
+
+    const cells = cellsForPlacement(r,c,ship.len,State.orientation);
+    if(!cells) return {ok:false, msg:"Out of bounds."};
+    if(!canPlace(board,cells)) return {ok:false, msg:"Ships can't overlap or touch."};
+
+    placeShip(board, ship, cells);
+    return {ok:true, msg:`Placed ${ship.name}.`};
+  }
+
   ownCanvas.addEventListener("drop", (evt)=>{
     if(!(State.phase==="p1_place" || State.phase==="p2_place")) return;
     evt.preventDefault();
@@ -938,7 +913,6 @@
     if(!res.ok){
       setStatus("Can't place there", res.msg);
     } else {
-      // after drop, clear selected too (nice UX)
       State.selectedShipKey = null;
       updatePlacementStatus();
     }
@@ -950,32 +924,14 @@
     render();
   });
 
-  // ====== Touch support (pointer tracking on board for preview + tap to place) ======
-  // Works for both mouse + touch, but we keep drag for desktop.
-  let pointerInsideOwn = false;
-
-  ownCanvas.addEventListener("pointerenter", ()=>{
-    pointerInsideOwn = true;
-  });
-  ownCanvas.addEventListener("pointerleave", ()=>{
-    pointerInsideOwn = false;
-    if(State.draggingShipKey) return;
-    // keep selection but remove hover
-    State.hoverCells = null;
-    State.hoverOk = true;
-    State.lastHoverAnchor = null;
-    render();
-  });
-
+  // ====== Touch support (select + snap hover + tap place) ======
   ownCanvas.addEventListener("pointermove", (evt)=>{
     if(!(State.phase==="p1_place" || State.phase==="p2_place")) return;
-
-    const key = State.selectedShipKey; // touch mode
+    const key = State.selectedShipKey;
     if(!key) return;
 
     const pos = getRCFromCanvas(ownCanvas, evt);
     if(!pos) return;
-
     State.lastHoverAnchor = pos;
 
     const ship = shipByKey(key);
@@ -993,12 +949,11 @@
     render();
   });
 
-  // tap/click to place when a ship is selected (touch-friendly)
   ownCanvas.addEventListener("pointerdown", (evt)=>{
     if(!(State.phase==="p1_place" || State.phase==="p2_place")) return;
     ensureAudio();
 
-    // if user is dragging (desktop), ignore pointerdown placement
+    // Ignore if desktop drag is active
     if(State.draggingShipKey) return;
 
     const key = State.selectedShipKey;
@@ -1011,7 +966,6 @@
     if(!res.ok){
       setStatus("Can't place there", res.msg);
     } else {
-      // auto-unselect after successful placement
       State.selectedShipKey = null;
       updatePlacementStatus();
     }
@@ -1021,6 +975,13 @@
     State.lastHoverAnchor = null;
     render();
     evt.preventDefault();
+  });
+
+  ownCanvas.addEventListener("pointerleave", ()=>{
+    State.hoverCells = null;
+    State.hoverOk = true;
+    State.lastHoverAnchor = null;
+    render();
   });
 
   // ====== Buttons ======
@@ -1049,27 +1010,48 @@
   newGameBtn.addEventListener("click", ()=>{ ensureAudio(); startNewGame(); });
   modeSel.addEventListener("change", ()=>{ ensureAudio(); startNewGame(); });
 
-  // ====== Battle & turn handling ======
+  // ====== Battle rules: Hit = extra turn, Miss = switch turn ======
   function currentDefender(){
     return (State.turn==="p1") ? State.p2 : State.p1;
   }
 
-  function afterShot(){
+  function afterShot(res){
     const def = currentDefender();
+
+    // win check
     if(countRemainingShipCells(def)===0){
       endGame(State.turn);
       return;
     }
 
+    // HIT => same attacker shoots again
+    if(res.hit){
+      if(State.mode==="cpu"){
+        if(State.turn==="p1"){
+          setStatus(res.sunk ? "Sunk! Go again" : "Hit! Go again", "You hit — take another shot.");
+          render();
+        } else {
+          setStatus(res.sunk ? "Computer sunk one! Again…" : "Computer hit! Again…", "Computer gets another shot.");
+          render();
+          setTimeout(cpuMove, 450);
+        }
+      } else {
+        setStatus(res.sunk ? "Sunk! Go again" : "Hit! Go again", "You hit — take another shot.");
+        render();
+      }
+      return;
+    }
+
+    // MISS => switch turn
     if(State.mode==="cpu"){
       if(State.turn==="p1"){
         State.turn="p2";
         render();
-        setStatus("Computer thinking…", "Computer is taking a shot.");
+        setStatus("Computer turn", "You missed — computer is shooting.");
         setTimeout(cpuMove, 450);
       } else {
         State.turn="p1";
-        setStatus("Your turn", "Click the enemy board (right) to fire.");
+        setStatus("Your turn", "Computer missed — your shot.");
         render();
       }
     } else {
@@ -1089,19 +1071,19 @@
 
     if(res.hit){
       if(res.sunk){
-        setStatus("Hit — Sunk!", `You sunk the ${res.sunk}!`);
+        setStatus("Hit — Sunk!", `You sunk the ${res.sunk}! (Shoot again)`);
         SFX.sunk();
       } else {
-        setStatus("Hit!", "Direct hit.");
+        setStatus("Hit!", "Direct hit. (Shoot again)");
         SFX.hit();
       }
     } else {
-      setStatus("Miss", "Splash… no ship there.");
+      setStatus("Miss", "Splash… you missed. (Turn ends)");
       SFX.miss();
     }
 
     render();
-    afterShot();
+    afterShot(res);
   }
 
   enemyCanvas.addEventListener("click", (evt)=>{
@@ -1113,6 +1095,7 @@
     battleFire(pos.r, pos.c);
   });
 
+  // ====== Ready / Next ======
   readyBtn.addEventListener("click", ()=>{
     ensureAudio();
 
@@ -1136,7 +1119,7 @@
       if(State.passTarget==="p2"){
         if(State.p2.shipsPlaced.length !== SHIPS.length){
           State.phase="p2_place";
-          setStatus("Player 2: Place ships", "Drag or tap a ship, then place on the board. Press Ready / Next when done.");
+          setStatus("Player 2: Place ships", "Place ships, then press Ready / Next.");
           updatePlacementStatus();
           render();
         } else {
@@ -1144,10 +1127,11 @@
         }
         return;
       }
+
       if(State.passTarget==="p1"){
-        // After P2 placed, pass back, then start battle screen
+        // Return to battle view for current player
         State.phase="battle";
-        setStatus("Player 1 turn", "Click Player 2's board (right) to fire.");
+        setStatus(State.turn==="p1" ? "Player 1 turn" : "Player 2 turn", "Fire on the enemy board. Hit = go again.");
         render();
         return;
       }
@@ -1257,7 +1241,7 @@
     const target = cpuPickTarget();
     if(!target){
       State.turn="p1";
-      setStatus("Your turn", "Click the enemy board (right) to fire.");
+      setStatus("Your turn", "Computer stuck — your shot.");
       render();
       return;
     }
@@ -1267,14 +1251,14 @@
     if(res.hit){
       cpuOnHit(target.r, target.c, res.sunk);
       if(res.sunk){
-        setStatus("Computer hit — sunk!", `Computer sunk your ${res.sunk}!`);
+        setStatus("Computer hit — sunk!", `Computer sunk your ${res.sunk}! (It shoots again)`);
         SFX.sunk();
       } else {
-        setStatus("Computer hit!", "Computer scored a hit.");
+        setStatus("Computer hit!", "Computer scored a hit. (It shoots again)");
         SFX.hit();
       }
     } else {
-      setStatus("Computer missed", "Splash… it missed.");
+      setStatus("Computer missed", "Computer missed. Your turn.");
       SFX.miss();
     }
 
@@ -1285,12 +1269,32 @@
       return;
     }
 
-    State.turn="p1";
-    setStatus("Your turn", "Click the enemy board (right) to fire.");
+    // Extra turn rule: CPU shoots again if it hit; otherwise give turn back
+    if(res.hit){
+      setTimeout(cpuMove, 450);
+    } else {
+      State.turn="p1";
+      setStatus("Your turn", "Click the enemy board (right) to fire. Hit = go again.");
+      render();
+    }
+  }
+
+  // ====== Start battle ======
+  function beginBattle(){
+    State.phase = "battle";
+    State.turn = "p1";
+    State.selectedShipKey = null;
+    State.hoverCells = null;
+    State.lastHoverAnchor = null;
+    resetCpuAI();
+    setStatus("Battle started", State.mode==="cpu"
+      ? "Click the enemy board (right) to fire. Hit = go again."
+      : "Player 1 starts. Hit = go again. Miss = pass device."
+    );
     render();
   }
 
-  // ====== Start ======
+  // Start new game
   startNewGame();
 })();
 </script>
