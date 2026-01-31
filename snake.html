@@ -336,10 +336,9 @@
     // Leaderboard (Global Top 100)
     // --------------------------
     const top100Query = query(
-      collection(db, SCORES),
-      orderBy("best", "desc"),
-      orderBy("updatedAt", "desc"),
-      limit(100)
+    collection(db, SCORES),
+    orderBy("best", "desc"),
+    limit(100)
     );
 
     function renderLeaderboard(rows) {
@@ -802,3 +801,4 @@
   </script>
 </body>
 </html>
+
