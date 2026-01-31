@@ -701,7 +701,7 @@ async function mpResolveIncomingMove(moveId, mv){
   if(!FB) return;
 
   // mv.by fired at mv.cell onto MY board
-  const myBoard = state.boards[0]; // ALWAYS my local board
+  const myBoard = state.boards[mp.slot]; // my board depends on slot
   const i = mv.cell;
 
   // already resolved locally? (avoid double writes if reload)
@@ -752,7 +752,7 @@ function mpApplyMoveResult(rr){
 
   if(attacker === mp.slot){
     // I fired -> mark on opponent board (virtual board = slot 1-mp.slot)
-    const oppBoard = state.boards[1]; // ALWAYS opponent board locally
+    const oppBoard = state.boards[1 - mp.slot]; // opponent depends on slot
 
     // we don't know ships, but shots are safe
     if(oppBoard.shots[i] === 0){
@@ -1646,6 +1646,10 @@ async function mpSetWinner(winnerSlot){
   });
 
   btnStart.addEventListener("click", () => {
+    if(mp.enabled){
+    toastLeft.textContent = "Online game: battle starts automatically when both players are ready.";
+    return;
+    }
     state.shootAgain = shootAgainChk.checked;
     state.difficulty = diffSel.value;
 
