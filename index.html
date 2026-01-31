@@ -1,26 +1,151 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Redsun</title>
-    <link rel="stylesheet" href="assets/css/styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Redsun</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    <header>
-        <div class="brand">
-            <img src="assets/images/redsun.png" alt="Redsun logo" class="brand-logo">
-            <h1>Redsun</h1>
+  <!-- Top Nav -->
+  <header class="topbar">
+    <div class="container nav-wrap">
+      <a class="brand" href="#">
+        <span class="brand-dot" aria-hidden="true"></span>
+        <span class="brand-name">Redsun</span>
+      </a>
+
+      <nav class="nav">
+        <a href="#" class="nav-link">Home</a>
+        <a href="#games" class="nav-link">Our Games</a>
+        <a href="#contact" class="nav-link">Contact</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Hero -->
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div class="hero-left">
+          <p class="pill">Mobile Game Studio</p>
+          <h1>Fast-paced games with style, challenge, and fun.</h1>
+          <p class="subtext">
+            We build bite-sized mobile experiences that are easy to pick up and hard to put down.
+          </p>
+
+          <div class="cta-row">
+            <a class="btn btn-primary" href="#games">See Our Games</a>
+            <a class="btn btn-ghost" href="#contact">Get in Touch</a>
+          </div>
+
+          <div class="mini-stats">
+            <div class="stat">
+              <div class="stat-num">⚡</div>
+              <div class="stat-text">Optimized for mobile</div>
+            </div>
+            <div class="stat">
+              <div class="stat-num">🎮</div>
+              <div class="stat-text">Arcade-inspired gameplay</div>
+            </div>
+            <div class="stat">
+              <div class="stat-num">🚀</div>
+              <div class="stat-text">Always improving</div>
+            </div>
+          </div>
         </div>
-        <nav>
-            <a href="index.html">Home</a>
-            <a href="apps.html">Our Games</a>
-        </nav>
-    </header>
-    <main>
-        <h2>Welcome to Redsun</h2>
-        <p>We build fast-paced mobile games!</p>
-        <a class="btn" href="apps.html">See Our Apps →</a>
-    </main>
-    <footer>© 2025 Redsun</footer>
+
+        <div class="hero-right">
+          <div class="hero-card">
+            <div class="glow"></div>
+            <h2>Featured</h2>
+            <p class="muted">
+              Add your game banner, screenshots, or a short trailer here later.
+            </p>
+
+            <div class="card-grid">
+              <div class="tile">
+                <span class="tile-emoji">🏆</span>
+                <span class="tile-title">High Score</span>
+                <span class="tile-sub">Replayable loops</span>
+              </div>
+              <div class="tile">
+                <span class="tile-emoji">🧠</span>
+                <span class="tile-title">Skill</span>
+                <span class="tile-sub">Quick mastery</span>
+              </div>
+              <div class="tile">
+                <span class="tile-emoji">✨</span>
+                <span class="tile-title">Polish</span>
+                <span class="tile-sub">Clean UI/FX</span>
+              </div>
+              <div class="tile">
+                <span class="tile-emoji">📱</span>
+                <span class="tile-title">Mobile</span>
+                <span class="tile-sub">Touch-first</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Games Section -->
+    <section class="section" id="games">
+      <div class="container">
+        <div class="section-head">
+          <h2>Our Games</h2>
+          <p class="muted">Showcase your games here. Add links to Google Play later.</p>
+        </div>
+
+        <div class="games-grid">
+          <article class="game-card">
+            <div class="game-thumb">🎮</div>
+            <h3>Game Title 1</h3>
+            <p class="muted">Short description: what makes it fun in one sentence.</p>
+            <a class="card-link" href="#">Learn more →</a>
+          </article>
+
+          <article class="game-card">
+            <div class="game-thumb">🔥</div>
+            <h3>Game Title 2</h3>
+            <p class="muted">Short description: challenge, style, and why it’s unique.</p>
+            <a class="card-link" href="#">Learn more →</a>
+          </article>
+
+          <article class="game-card">
+            <div class="game-thumb">⚡</div>
+            <h3>Game Title 3</h3>
+            <p class="muted">Short description: fast, smooth, and addictive loops.</p>
+            <a class="card-link" href="#">Learn more →</a>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contact -->
+    <section class="section" id="contact">
+      <div class="container">
+        <div class="contact-box">
+          <div>
+            <h2>Let’s build something fun.</h2>
+            <p class="muted">Want to collaborate or ask about a game? Send a message.</p>
+          </div>
+          <a class="btn btn-primary" href="mailto:youremail@example.com">Email Us</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="container footer-wrap">
+      <p class="muted">© 2025 Redsun. All rights reserved.</p>
+      <div class="footer-links">
+        <a href="#games">Games</a>
+        <a href="#contact">Contact</a>
+      </div>
+    </div>
+  </footer>
 </body>
 </html>
