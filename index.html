@@ -3,54 +3,55 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Redsun</title>
-  <link rel="stylesheet" href="style.css" />
+  <title>Redsun — Mobile Game Studio</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
 </head>
+
 <body>
   <!-- Top Nav -->
   <header class="topbar">
     <div class="container nav-wrap">
-      <a class="brand" href="#">
-        <span class="brand-dot" aria-hidden="true"></span>
+      <a class="brand" href="index.html">
+        <span class="brand-dot"></span>
         <span class="brand-name">Redsun</span>
       </a>
 
       <nav class="nav">
-        <a href="#" class="nav-link">Home</a>
-        <a href="#games" class="nav-link">Our Games</a>
-        <a href="#contact" class="nav-link">Contact</a>
+        <a href="index.html" class="nav-link active">Home</a>
+        <a href="apps.html" class="nav-link">Our Games</a>
       </nav>
     </div>
   </header>
 
-  <!-- Hero -->
   <main>
+    <!-- HERO -->
     <section class="hero">
       <div class="container hero-grid">
         <div class="hero-left">
-          <p class="pill">Mobile Game Studio</p>
-          <h1>Fast-paced games with style, challenge, and fun.</h1>
+          <p class="pill">Indie Mobile Game Studio</p>
+          <h1>Fast-paced games built for quick fun.</h1>
           <p class="subtext">
-            We build bite-sized mobile experiences that are easy to pick up and hard to put down.
+            Redsun creates arcade-inspired mobile and browser games with clean design,
+            smooth performance, and addictive gameplay loops.
           </p>
 
           <div class="cta-row">
-            <a class="btn btn-primary" href="#games">See Our Games</a>
-            <a class="btn btn-ghost" href="#contact">Get in Touch</a>
+            <a href="apps.html" class="btn btn-primary">View Our Games</a>
+            <a href="#featured" class="btn btn-ghost">Featured Game</a>
           </div>
 
           <div class="mini-stats">
             <div class="stat">
-              <div class="stat-num">⚡</div>
-              <div class="stat-text">Optimized for mobile</div>
-            </div>
-            <div class="stat">
               <div class="stat-num">🎮</div>
-              <div class="stat-text">Arcade-inspired gameplay</div>
+              <div class="stat-text">Arcade gameplay</div>
             </div>
             <div class="stat">
-              <div class="stat-num">🚀</div>
-              <div class="stat-text">Always improving</div>
+              <div class="stat-num">📱</div>
+              <div class="stat-text">Mobile-first</div>
+            </div>
+            <div class="stat">
+              <div class="stat-num">⚡</div>
+              <div class="stat-text">Optimized & fast</div>
             </div>
           </div>
         </div>
@@ -60,92 +61,112 @@
             <div class="glow"></div>
             <h2>Featured</h2>
             <p class="muted">
-              Add your game banner, screenshots, or a short trailer here later.
+              Our latest and most polished release.
             </p>
 
-            <div class="card-grid">
-              <div class="tile">
-                <span class="tile-emoji">🏆</span>
-                <span class="tile-title">High Score</span>
-                <span class="tile-sub">Replayable loops</span>
-              </div>
-              <div class="tile">
-                <span class="tile-emoji">🧠</span>
-                <span class="tile-title">Skill</span>
-                <span class="tile-sub">Quick mastery</span>
-              </div>
-              <div class="tile">
-                <span class="tile-emoji">✨</span>
-                <span class="tile-title">Polish</span>
-                <span class="tile-sub">Clean UI/FX</span>
-              </div>
-              <div class="tile">
-                <span class="tile-emoji">📱</span>
-                <span class="tile-title">Mobile</span>
-                <span class="tile-sub">Touch-first</span>
-              </div>
+            <h3 class="game-title">Sky Dash: Jetpack Hero</h3>
+            <p class="muted">
+              Endless runner with jetpacks, power-ups, and global leaderboards.
+              Dodge obstacles, fly farther, and beat your high score.
+            </p>
+
+            <div class="btn-row">
+              <a
+                href="https://play.google.com/store/apps/details?id=redsun.skydash"
+                target="_blank"
+                class="btn btn-primary"
+              >
+                Play on Google Play
+              </a>
+              <a href="apps.html" class="btn btn-ghost">All Games</a>
             </div>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- Games Section -->
-    <section class="section" id="games">
+    <!-- FEATURED GAMES -->
+    <section class="section" id="featured">
       <div class="container">
         <div class="section-head">
           <h2>Our Games</h2>
-          <p class="muted">Showcase your games here. Add links to Google Play later.</p>
+          <p class="muted">
+            Play in your browser or download on mobile.
+          </p>
         </div>
 
         <div class="games-grid">
+          <!-- Sky Dash -->
           <article class="game-card">
-            <div class="game-thumb">🎮</div>
-            <h3>Game Title 1</h3>
-            <p class="muted">Short description: what makes it fun in one sentence.</p>
-            <a class="card-link" href="#">Learn more →</a>
+            <div class="game-thumb">
+              <img src="assets/images/sky-dash.png" alt="Sky Dash: Jetpack Hero">
+            </div>
+            <span class="tag tag-hot">Featured</span>
+            <h3 class="game-title">Sky Dash: Jetpack Hero</h3>
+            <p class="muted">
+              Fast-paced endless runner with jetpacks, power-ups, and leaderboards.
+            </p>
+            <a
+              href="https://play.google.com/store/apps/details?id=redsun.skydash"
+              target="_blank"
+              class="btn btn-primary"
+            >
+              Download
+            </a>
           </article>
 
+          <!-- Snake -->
           <article class="game-card">
-            <div class="game-thumb">🔥</div>
-            <h3>Game Title 2</h3>
-            <p class="muted">Short description: challenge, style, and why it’s unique.</p>
-            <a class="card-link" href="#">Learn more →</a>
+            <div class="game-thumb">
+              <img src="assets/images/snake.png" alt="Snake Classic">
+            </div>
+            <span class="tag">Browser</span>
+            <h3 class="game-title">Snake Classic</h3>
+            <p class="muted">
+              A clean, smooth version of the classic Snake game you can play instantly.
+            </p>
+            <a href="snake.html" class="btn btn-primary">Play Now</a>
           </article>
 
+          <!-- Tetris -->
           <article class="game-card">
-            <div class="game-thumb">⚡</div>
-            <h3>Game Title 3</h3>
-            <p class="muted">Short description: fast, smooth, and addictive loops.</p>
-            <a class="card-link" href="#">Learn more →</a>
+            <div class="game-thumb">
+              <img src="assets/images/tetris.png" alt="Block Drop">
+            </div>
+            <span class="tag">Puzzle</span>
+            <h3 class="game-title">Block Drop (Tetris)</h3>
+            <p class="muted">
+              Stack blocks, clear lines, and survive as the speed increases.
+            </p>
+            <a href="tetris.html" class="btn btn-primary">Play Now</a>
           </article>
-        </div>
-      </div>
-    </section>
 
-    <!-- Contact -->
-    <section class="section" id="contact">
-      <div class="container">
-        <div class="contact-box">
-          <div>
-            <h2>Let’s build something fun.</h2>
-            <p class="muted">Want to collaborate or ask about a game? Send a message.</p>
-          </div>
-          <a class="btn btn-primary" href="mailto:youremail@example.com">Email Us</a>
+          <!-- 2048 -->
+          <article class="game-card">
+            <div class="game-thumb">
+              <img src="assets/images/2048.png" alt="2048 Merge">
+            </div>
+            <span class="tag">Numbers</span>
+            <h3 class="game-title">2048 Merge</h3>
+            <p class="muted">
+              Combine tiles, plan your moves, and reach the legendary 2048 tile.
+            </p>
+            <a href="2048.html" class="btn btn-primary">Play Now</a>
+          </article>
         </div>
       </div>
     </section>
   </main>
 
-  <!-- Footer -->
   <footer class="footer">
     <div class="container footer-wrap">
-      <p class="muted">© 2025 Redsun. All rights reserved.</p>
+      <p class="muted">© 2025 Redsun</p>
       <div class="footer-links">
-        <a href="#games">Games</a>
-        <a href="#contact">Contact</a>
+        <a href="index.html">Home</a>
+        <a href="apps.html">Our Games</a>
       </div>
     </div>
   </footer>
 </body>
 </html>
+
