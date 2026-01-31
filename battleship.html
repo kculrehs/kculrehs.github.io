@@ -563,7 +563,30 @@
         );
       }
 
-      // (Optional later) map firebase phase/turn into your local state
+      // ✅ STEP 8C: sync Firebase phase/turn into local game state (online PvP)
+      if(mp.enabled){
+        // force online mode UI
+        state.mode = "pvp_online";
+        diffSel.disabled = true;
+        enemyTitle.textContent = "Opponent Board";
+
+      if(phase === "placing"){
+        // keep local placement UI as-is (each player places privately)
+        // you can optionally set state.phase to "place_p1" if you want,
+        // but not required for now.
+      }
+      else if(phase === "battle"){
+        state.phase = "battle";
+        state.turn = turn;
+      }
+      else if(phase === "over"){
+        state.phase = "over";
+        state.winner = r.public?.winner ?? null;
+      }
+
+      renderAll(false);
+    }
+
       // e.g. if(phase === "battle"){ state.phase="battle"; state.turn=turn; renderAll(false); }
     }
 
