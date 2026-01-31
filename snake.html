@@ -1,0 +1,499 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Snake</title>
+  <style>
+    :root {
+      --bg: #0b0f14;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #22c55e;
+      --danger: #ef4444;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 800px at 50% 20%, #0f172a, var(--bg));
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    .wrap {
+      width: min(720px, 100%);
+      display: grid;
+      gap: 12px;
+    }
+    header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      background: rgba(17, 24, 39, 0.75);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      backdrop-filter: blur(8px);
+    }
+    header h1 {
+      font-size: 18px;
+      margin: 0;
+      letter-spacing: 0.2px;
+    }
+    .stats {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 14px;
+      color: var(--muted);
+      justify-content: flex-end;
+    }
+    .stats b { color: var(--text); font-weight: 700; }
+    .panel {
+      background: rgba(17, 24, 39, 0.75);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+      backdrop-filter: blur(8px);
+    }
+    canvas {
+      width: 100%;
+      height: auto;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: #0b1220;
+      display: block;
+    }
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    button, select {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 14px;
+      cursor: pointer;
+    }
+    button:hover, select:hover { border-color: rgba(255,255,255,0.22); }
+    button.primary { border-color: rgba(34,197,94,0.35); }
+    button.primary:hover { border-color: rgba(34,197,94,0.6); }
+    button.danger { border-color: rgba(239,68,68,0.35); }
+    button.danger:hover { border-color: rgba(239,68,68,0.6); }
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.35;
+    }
+
+    /* Mobile D-pad */
+    .dpad {
+      display: none;
+      gap: 8px;
+      justify-content: center;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    .dpad .col { display: grid; gap: 8px; }
+    .dpad button {
+      width: 64px;
+      height: 54px;
+      font-size: 16px;
+      border-radius: 14px;
+    }
+    @media (max-width: 680px) {
+      .dpad { display: flex; }
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <h1>🐍 Classic Snake</h1>
+      <div class="stats">
+        <div>Score: <b id="score">0</b></div>
+        <div>Best: <b id="best">0</b></div>
+        <div>Speed: <b id="speedLabel">Normal</b></div>
+      </div>
+    </header>
+
+    <div class="panel">
+      <canvas id="game" width="600" height="600" aria-label="Snake game"></canvas>
+
+      <div class="row">
+        <div class="controls">
+          <button class="primary" id="startBtn">Start</button>
+          <button id="pauseBtn">Pause</button>
+          <button class="danger" id="resetBtn">Reset</button>
+
+          <label style="display:flex; gap:8px; align-items:center; color: var(--muted); font-size:14px;">
+            Speed
+            <select id="speedSel">
+              <option value="10">Slow</option>
+              <option value="12" selected>Normal</option>
+              <option value="15">Fast</option>
+              <option value="18">Insane</option>
+            </select>
+          </label>
+
+          <label style="display:flex; gap:8px; align-items:center; color: var(--muted); font-size:14px;">
+            Walls
+            <select id="wallsSel">
+              <option value="1" selected>On</option>
+              <option value="0">Off (wrap)</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="hint">
+          Desktop: Arrow keys / WASD • Space = Pause • R = Reset<br/>
+          Mobile: Use the D-pad below
+        </div>
+      </div>
+
+      <div class="dpad" aria-label="Mobile controls">
+        <div class="col">
+          <button id="upBtn">▲</button>
+          <div style="display:flex; gap:8px; justify-content:center;">
+            <button id="leftBtn">◀</button>
+            <button id="downBtn">▼</button>
+            <button id="rightBtn">▶</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (() => {
+      const canvas = document.getElementById("game");
+      const ctx = canvas.getContext("2d");
+
+      const scoreEl = document.getElementById("score");
+      const bestEl = document.getElementById("best");
+      const speedLabelEl = document.getElementById("speedLabel");
+
+      const startBtn = document.getElementById("startBtn");
+      const pauseBtn = document.getElementById("pauseBtn");
+      const resetBtn = document.getElementById("resetBtn");
+
+      const speedSel = document.getElementById("speedSel");
+      const wallsSel = document.getElementById("wallsSel");
+
+      const upBtn = document.getElementById("upBtn");
+      const downBtn = document.getElementById("downBtn");
+      const leftBtn = document.getElementById("leftBtn");
+      const rightBtn = document.getElementById("rightBtn");
+
+      // Grid config
+      const GRID = 24;                 // 24x24
+      const CELL = canvas.width / GRID;
+
+      // Colors
+      const BG = "#0b1220";
+      const GRIDLINE = "rgba(255,255,255,0.06)";
+      const SNAKE = "#22c55e";
+      const SNAKE_HEAD = "#86efac";
+      const FOOD = "#ef4444";
+
+      // State
+      let snake, dir, nextDir, food, score, best, running, paused;
+      let ticksPerSecond = Number(speedSel.value);
+      let wallsOn = wallsSel.value === "1";
+
+      // Timing via requestAnimationFrame with fixed tick
+      let lastTime = 0;
+      let acc = 0;
+      const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+
+      function speedName(tps) {
+        if (tps <= 10) return "Slow";
+        if (tps <= 12) return "Normal";
+        if (tps <= 15) return "Fast";
+        return "Insane";
+      }
+
+      function loadBest() {
+        const v = localStorage.getItem("snake_best");
+        best = v ? Number(v) : 0;
+        bestEl.textContent = best;
+      }
+      function saveBest() {
+        localStorage.setItem("snake_best", String(best));
+        bestEl.textContent = best;
+      }
+
+      function resetGame() {
+        snake = [
+          { x: 12, y: 12 },
+          { x: 11, y: 12 },
+          { x: 10, y: 12 }
+        ];
+        dir = { x: 1, y: 0 };
+        nextDir = { x: 1, y: 0 };
+        score = 0;
+        scoreEl.textContent = score;
+        placeFood();
+        paused = false;
+        running = false;
+        pauseBtn.textContent = "Pause";
+        draw();
+      }
+
+      function placeFood() {
+        const occupied = new Set(snake.map(p => `${p.x},${p.y}`));
+        while (true) {
+          const fx = Math.floor(Math.random() * GRID);
+          const fy = Math.floor(Math.random() * GRID);
+          if (!occupied.has(`${fx},${fy}`)) {
+            food = { x: fx, y: fy };
+            return;
+          }
+        }
+      }
+
+      function start() {
+        if (!running) {
+          running = true;
+          paused = false;
+          pauseBtn.textContent = "Pause";
+          lastTime = performance.now();
+          acc = 0;
+          requestAnimationFrame(loop);
+        } else if (paused) {
+          togglePause();
+        }
+      }
+
+      function togglePause() {
+        if (!running) return;
+        paused = !paused;
+        pauseBtn.textContent = paused ? "Resume" : "Pause";
+      }
+
+      function gameOver() {
+        running = false;
+        paused = false;
+        if (score > best) {
+          best = score;
+          saveBest();
+        }
+        // Simple overlay message
+        draw();
+        ctx.fillStyle = "rgba(0,0,0,0.55)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 40px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("Game Over", canvas.width / 2, canvas.height / 2 - 10);
+        ctx.font = "16px system-ui, sans-serif";
+        ctx.fillStyle = "rgba(255,255,255,0.85)";
+        ctx.fillText("Press Start to play again", canvas.width / 2, canvas.height / 2 + 22);
+      }
+
+      function setDirection(nx, ny) {
+        // Prevent reversing into itself
+        if (nx === -dir.x && ny === -dir.y) return;
+        nextDir = { x: nx, y: ny };
+      }
+
+      function tick() {
+        if (!running || paused) return;
+
+        dir = nextDir;
+
+        const head = snake[0];
+        let nx = head.x + dir.x;
+        let ny = head.y + dir.y;
+
+        if (wallsOn) {
+          if (nx < 0 || nx >= GRID || ny < 0 || ny >= GRID) {
+            gameOver();
+            return;
+          }
+        } else {
+          nx = (nx + GRID) % GRID;
+          ny = (ny + GRID) % GRID;
+        }
+
+        const newHead = { x: nx, y: ny };
+
+        // Collision with body
+        for (let i = 0; i < snake.length; i++) {
+          if (snake[i].x === newHead.x && snake[i].y === newHead.y) {
+            gameOver();
+            return;
+          }
+        }
+
+        snake.unshift(newHead);
+
+        // Eat food?
+        if (newHead.x === food.x && newHead.y === food.y) {
+          score += 1;
+          scoreEl.textContent = score;
+          placeFood();
+        } else {
+          snake.pop();
+        }
+
+        draw();
+      }
+
+      function drawGrid() {
+        ctx.fillStyle = BG;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.strokeStyle = GRIDLINE;
+        ctx.lineWidth = 1;
+
+        for (let i = 1; i < GRID; i++) {
+          const p = i * CELL;
+          ctx.beginPath();
+          ctx.moveTo(p, 0);
+          ctx.lineTo(p, canvas.height);
+          ctx.stroke();
+
+          ctx.beginPath();
+          ctx.moveTo(0, p);
+          ctx.lineTo(canvas.width, p);
+          ctx.stroke();
+        }
+      }
+
+      function draw() {
+        drawGrid();
+
+        // Food
+        ctx.fillStyle = FOOD;
+        ctx.beginPath();
+        ctx.roundRect(food.x * CELL + 4, food.y * CELL + 4, CELL - 8, CELL - 8, 8);
+        ctx.fill();
+
+        // Snake
+        for (let i = snake.length - 1; i >= 0; i--) {
+          const p = snake[i];
+          ctx.fillStyle = (i === 0) ? SNAKE_HEAD : SNAKE;
+          ctx.beginPath();
+          ctx.roundRect(p.x * CELL + 3, p.y * CELL + 3, CELL - 6, CELL - 6, 10);
+          ctx.fill();
+        }
+
+        // HUD tip when not running
+        if (!running) {
+          ctx.fillStyle = "rgba(255,255,255,0.75)";
+          ctx.font = "16px system-ui, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("Press Start (or Arrow key) to play", canvas.width / 2, 24);
+        }
+
+        // paused label
+        if (running && paused) {
+          ctx.fillStyle = "rgba(0,0,0,0.45)";
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.fillStyle = "#ffffff";
+          ctx.font = "bold 34px system-ui, sans-serif";
+          ctx.textAlign = "center";
+          ctx.fillText("Paused", canvas.width / 2, canvas.height / 2);
+        }
+      }
+
+      function loop(t) {
+        if (!running) return;
+
+        const dt = (t - lastTime) / 1000;
+        lastTime = t;
+        acc += dt;
+
+        const step = 1 / clamp(ticksPerSecond, 5, 30);
+        while (acc >= step) {
+          tick();
+          acc -= step;
+        }
+
+        requestAnimationFrame(loop);
+      }
+
+      // Events
+      document.addEventListener("keydown", (e) => {
+        const k = e.key.toLowerCase();
+        if (k === "arrowup" || k === "w") setDirection(0, -1);
+        else if (k === "arrowdown" || k === "s") setDirection(0, 1);
+        else if (k === "arrowleft" || k === "a") setDirection(-1, 0);
+        else if (k === "arrowright" || k === "d") setDirection(1, 0);
+        else if (k === " " ) togglePause();
+        else if (k === "r") { resetGame(); start(); }
+
+        // Start on first move key if not running
+        if (!running && ["arrowup","arrowdown","arrowleft","arrowright","w","a","s","d"].includes(k)) {
+          start();
+        }
+      });
+
+      startBtn.addEventListener("click", () => { resetGame(); start(); });
+      pauseBtn.addEventListener("click", togglePause);
+      resetBtn.addEventListener("click", () => { resetGame(); });
+
+      speedSel.addEventListener("change", () => {
+        ticksPerSecond = Number(speedSel.value);
+        speedLabelEl.textContent = speedName(ticksPerSecond);
+      });
+
+      wallsSel.addEventListener("change", () => {
+        wallsOn = wallsSel.value === "1";
+      });
+
+      // D-pad
+      const tap = (btn, dx, dy) => {
+        btn.addEventListener("click", () => {
+          setDirection(dx, dy);
+          if (!running) start();
+        });
+      };
+      tap(upBtn, 0, -1);
+      tap(downBtn, 0, 1);
+      tap(leftBtn, -1, 0);
+      tap(rightBtn, 1, 0);
+
+      // Init
+      loadBest();
+      speedLabelEl.textContent = speedName(ticksPerSecond);
+      // Add roundRect support fallback (older browsers)
+      if (!CanvasRenderingContext2D.prototype.roundRect) {
+        CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+          r = Math.min(r, w / 2, h / 2);
+          this.beginPath();
+          this.moveTo(x + r, y);
+          this.arcTo(x + w, y, x + w, y + h, r);
+          this.arcTo(x + w, y + h, x, y + h, r);
+          this.arcTo(x, y + h, x, y, r);
+          this.arcTo(x, y, x + w, y, r);
+          this.closePath();
+          return this;
+        };
+      }
+      resetGame();
+    })();
+  </script>
+</body>
+</html>
