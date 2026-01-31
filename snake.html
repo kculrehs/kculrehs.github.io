@@ -5,100 +5,177 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Snake</title>
   <style>
-    :root{
-      --bg:#0b0f14; --panel:#111827; --text:#e5e7eb; --muted:#9ca3af;
-      --accent:#22c55e; --danger:#ef4444;
+    :root {
+      --bg: #0b0f14;
+      --panel: #111827;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #22c55e;
+      --danger: #ef4444;
     }
-    *{box-sizing:border-box}
-    body{
-      margin:0; padding:16px; min-height:100vh; display:grid; place-items:center;
-      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:radial-gradient(1200px 800px at 50% 20%, #0f172a, var(--bg));
-      color:var(--text);
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 800px at 50% 20%, #0f172a, var(--bg));
+      color: var(--text);
+      display: grid;
+      place-items: center;
+      min-height: 100vh;
+      padding: 16px;
     }
-    .wrap{width:min(1100px,100%); display:grid; gap:12px;}
-    header{
-      display:flex; align-items:baseline; justify-content:space-between; gap:12px;
-      padding:12px 14px; border-radius:14px;
-      background:rgba(17,24,39,.75); border:1px solid rgba(255,255,255,.08);
-      backdrop-filter:blur(8px);
-    }
-    header h1{margin:0; font-size:18px; letter-spacing:.2px;}
-    .stats{display:flex; gap:10px; flex-wrap:wrap; font-size:14px; color:var(--muted); justify-content:flex-end;}
-    .stats b{color:var(--text); font-weight:700;}
+    .wrap { width: min(1160px, 100%); display: grid; gap: 12px; }
 
-    .content{display:grid; grid-template-columns: 1fr 320px; gap:12px; align-items:start;}
-    @media (max-width: 900px){ .content{grid-template-columns:1fr;} }
+    header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      background: rgba(17, 24, 39, 0.75);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      backdrop-filter: blur(8px);
+    }
+    header h1 { font-size: 18px; margin: 0; letter-spacing: 0.2px; }
+    .stats {
+      display: flex; gap: 10px; flex-wrap: wrap;
+      font-size: 14px; color: var(--muted); justify-content: flex-end;
+    }
+    .stats b { color: var(--text); font-weight: 700; }
 
-    .panel{
-      background:rgba(17,24,39,.75);
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:14px;
-      padding:14px;
-      display:grid;
-      gap:12px;
-      backdrop-filter:blur(8px);
+    .content {
+      display: grid;
+      grid-template-columns: 1fr 340px;
+      gap: 12px;
+      align-items: start;
     }
-    canvas{
-      width:100%; height:auto; display:block;
-      border-radius:12px; border:1px solid rgba(255,255,255,.08);
-      background:#0b1220;
+    @media (max-width: 980px) {
+      .content { grid-template-columns: 1fr; }
     }
-    .row{display:flex; flex-wrap:wrap; gap:10px; align-items:center; justify-content:space-between;}
-    .controls{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
 
-    button, select, input{
-      appearance:none;
-      border:1px solid rgba(255,255,255,.12);
-      background:rgba(255,255,255,.06);
-      color:var(--text);
-      padding:10px 12px;
-      border-radius:12px;
-      font-size:14px;
+    .panel {
+      background: rgba(17, 24, 39, 0.75);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 14px;
+      padding: 14px;
+      display: grid;
+      gap: 12px;
+      backdrop-filter: blur(8px);
     }
-    button{cursor:pointer;}
-    button:hover, select:hover, input:hover{border-color:rgba(255,255,255,.22);}
-    button.primary{border-color:rgba(34,197,94,.35);}
-    button.primary:hover{border-color:rgba(34,197,94,.6);}
-    button.danger{border-color:rgba(239,68,68,.35);}
-    button.danger:hover{border-color:rgba(239,68,68,.6);}
-    input{cursor:text; width:140px;}
-    input::placeholder{color:rgba(229,231,235,.45);}
-    .hint{color:var(--muted); font-size:13px; line-height:1.35;}
+
+    canvas {
+      width: 100%;
+      height: auto;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: #0b1220;
+      display: block;
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .controls {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    button, select, input {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.12);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 14px;
+      outline: none;
+    }
+    button { cursor: pointer; }
+    button:hover, select:hover, input:hover { border-color: rgba(255,255,255,0.22); }
+    button.primary { border-color: rgba(34,197,94,0.35); }
+    button.primary:hover { border-color: rgba(34,197,94,0.6); }
+    button.danger { border-color: rgba(239,68,68,0.35); }
+    button.danger:hover { border-color: rgba(239,68,68,0.6); }
+    input { cursor: text; width: 160px; }
+    input::placeholder { color: rgba(229,231,235,0.45); }
+
+    .hint { color: var(--muted); font-size: 13px; line-height: 1.35; }
 
     /* Mobile D-pad */
-    .dpad{display:none; gap:8px; justify-content:center; user-select:none; -webkit-user-select:none; touch-action:manipulation;}
-    .dpad .col{display:grid; gap:8px;}
-    .dpad button{width:64px; height:54px; font-size:16px; border-radius:14px;}
-    @media (max-width: 680px){ .dpad{display:flex;} }
+    .dpad {
+      display: none;
+      gap: 8px;
+      justify-content: center;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+    .dpad .col { display: grid; gap: 8px; }
+    .dpad button { width: 64px; height: 54px; font-size: 16px; border-radius: 14px; }
+    @media (max-width: 680px) { .dpad { display: flex; } }
+
+    /* Auth bar */
+    .authbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.03);
+    }
+    .authleft { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .authright { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .badge {
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.10);
+      color: rgba(229,231,235,0.85);
+      font-size: 12px;
+      background: rgba(255,255,255,0.04);
+    }
 
     /* Leaderboard */
-    .lbHead{display:flex; align-items:baseline; justify-content:space-between; gap:10px;}
-    .lbTitle{margin:0; font-size:15px; letter-spacing:.2px;}
-    .lbSub{margin:0; color:var(--muted); font-size:12px;}
-    .lbActions{display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end;}
-    .lbList{
-      border:1px solid rgba(255,255,255,.08);
-      border-radius:12px;
-      overflow:hidden;
-      background:rgba(255,255,255,.03);
+    .lbHead {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .lbTitle { font-size: 15px; margin: 0; letter-spacing: 0.2px; }
+    .lbSub { margin: 0; color: var(--muted); font-size: 12px; }
+
+    .lbList {
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 12px;
+      overflow: hidden;
+      background: rgba(255,255,255,0.03);
       max-height: 560px;
-      overflow-y:auto;
+      overflow-y: auto;
     }
-    .lbRow{
-      display:grid;
-      grid-template-columns: 46px 1fr 70px;
-      gap:8px;
-      padding:10px 10px;
-      border-bottom:1px solid rgba(255,255,255,.06);
-      align-items:center;
-      font-size:13px;
+    .lbRow {
+      display: grid;
+      grid-template-columns: 48px 1fr 70px;
+      gap: 8px;
+      padding: 10px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      align-items: center;
+      font-size: 13px;
     }
-    .lbRow:last-child{border-bottom:none;}
-    .lbRank{color:rgba(229,231,235,.75); font-variant-numeric:tabular-nums;}
-    .lbName{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-    .lbScore{text-align:right; font-variant-numeric:tabular-nums; font-weight:800;}
-    .lbEmpty{padding:14px; color:var(--muted); font-size:13px; text-align:center;}
+    .lbRow:last-child { border-bottom: none; }
+    .lbRank { color: rgba(229,231,235,0.75); font-variant-numeric: tabular-nums; }
+    .lbName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .lbScore { text-align: right; font-variant-numeric: tabular-nums; font-weight: 800; }
+    .lbEmpty { padding: 14px; color: var(--muted); font-size: 13px; text-align: center; }
   </style>
 </head>
 
@@ -114,14 +191,28 @@
     </header>
 
     <div class="content">
-      <!-- Game -->
+      <!-- Game panel -->
       <div class="panel">
+        <div class="authbar">
+          <div class="authleft">
+            <span class="badge" id="authStatus">Not signed in</span>
+            <label style="display:flex; gap:8px; align-items:center; color: var(--muted); font-size:14px;">
+              IGN
+              <input id="ignInput" maxlength="16" placeholder="Enter IGN" />
+            </label>
+          </div>
+          <div class="authright">
+            <button class="primary" id="signInBtn">Sign in</button>
+            <button id="signOutBtn" style="display:none;">Sign out</button>
+          </div>
+        </div>
+
         <canvas id="game" width="600" height="600" aria-label="Snake game"></canvas>
 
         <div class="row">
           <div class="controls">
-            <button class="primary" id="startBtn">Start</button>
-            <button id="pauseBtn">Pause</button>
+            <button class="primary" id="startBtn" disabled>Start</button>
+            <button id="pauseBtn" disabled>Pause</button>
             <button class="danger" id="resetBtn">Reset</button>
 
             <label style="display:flex; gap:8px; align-items:center; color: var(--muted); font-size:14px;">
@@ -141,16 +232,12 @@
                 <option value="0">Off (wrap)</option>
               </select>
             </label>
-
-            <label style="display:flex; gap:8px; align-items:center; color: var(--muted); font-size:14px;">
-              Name
-              <input id="nameInput" maxlength="16" placeholder="Player" />
-            </label>
           </div>
 
           <div class="hint">
-            Desktop: Arrow keys / WASD • Space = Pause • R = Reset<br/>
-            Start: click Start OR press an Arrow/WASD key (not after Game Over)
+            Must sign in with your IGN first.<br/>
+            Idle: Arrow/WASD starts and moves • Space = Pause • R = Reset<br/>
+            Game Over: only Start can restart
           </div>
         </div>
 
@@ -166,15 +253,12 @@
         </div>
       </div>
 
-      <!-- Leaderboard -->
+      <!-- Leaderboard panel -->
       <aside class="panel" aria-label="Leaderboard">
         <div class="lbHead">
           <div>
-            <h2 class="lbTitle">🏆 Leaderboard</h2>
-            <p class="lbSub">Top 100 (saved on this device)</p>
-          </div>
-          <div class="lbActions">
-            <button class="danger" id="clearLbBtn" title="Clear leaderboard">Clear</button>
+            <h2 class="lbTitle">🌍 Global Leaderboard</h2>
+            <p class="lbSub">Top 100 best scores</p>
           </div>
         </div>
         <div class="lbList" id="lbList" role="list"></div>
@@ -182,412 +266,563 @@
     </div>
   </div>
 
-  <script>
-    (() => {
-      const canvas = document.getElementById("game");
-      const ctx = canvas.getContext("2d");
+  <script type="module">
+    // --------------------------
+    // Firebase (Auth + Firestore)
+    // --------------------------
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+    import {
+      getAuth,
+      GoogleAuthProvider,
+      signInWithPopup,
+      signOut,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+    import {
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      runTransaction,
+      collection,
+      query,
+      orderBy,
+      limit,
+      onSnapshot
+    } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
 
-      const scoreEl = document.getElementById("score");
-      const bestEl = document.getElementById("best");
-      const speedLabelEl = document.getElementById("speedLabel");
+    // ✅ Replace this with your Firebase config from Firebase Console
+    const firebaseConfig = {
+      apiKey: "YOUR_API_KEY",
+      authDomain: "YOUR_PROJECT.firebaseapp.com",
+      projectId: "YOUR_PROJECT_ID",
+      storageBucket: "YOUR_PROJECT.appspot.com",
+      messagingSenderId: "YOUR_SENDER_ID",
+      appId: "YOUR_APP_ID"
+    };
 
-      const startBtn = document.getElementById("startBtn");
-      const pauseBtn = document.getElementById("pauseBtn");
-      const resetBtn = document.getElementById("resetBtn");
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    const provider = new GoogleAuthProvider();
 
-      const speedSel = document.getElementById("speedSel");
-      const wallsSel = document.getElementById("wallsSel");
+    // Collections:
+    // users/{uid} -> { ign, uid, updatedAt }
+    // scores/{uid} -> { uid, ign, best, updatedAt }
+    const USERS = "users";
+    const SCORES = "scores";
 
-      const upBtn = document.getElementById("upBtn");
-      const downBtn = document.getElementById("downBtn");
-      const leftBtn = document.getElementById("leftBtn");
-      const rightBtn = document.getElementById("rightBtn");
+    // --------------------------
+    // UI Elements
+    // --------------------------
+    const ignInput = document.getElementById("ignInput");
+    const authStatus = document.getElementById("authStatus");
+    const signInBtn = document.getElementById("signInBtn");
+    const signOutBtn = document.getElementById("signOutBtn");
 
-      const nameInput = document.getElementById("nameInput");
-      const lbListEl = document.getElementById("lbList");
-      const clearLbBtn = document.getElementById("clearLbBtn");
+    const startBtn = document.getElementById("startBtn");
+    const pauseBtn = document.getElementById("pauseBtn");
+    const resetBtn = document.getElementById("resetBtn");
+    const speedSel = document.getElementById("speedSel");
+    const wallsSel = document.getElementById("wallsSel");
 
-      // Grid config
-      const GRID = 24;
-      const CELL = canvas.width / GRID;
+    const lbListEl = document.getElementById("lbList");
 
-      // Colors
-      const BG = "#0b1220";
-      const GRIDLINE = "rgba(255,255,255,0.06)";
-      const SNAKE = "#22c55e";
-      const SNAKE_HEAD = "#86efac";
-      const FOOD = "#ef4444";
+    const upBtn = document.getElementById("upBtn");
+    const downBtn = document.getElementById("downBtn");
+    const leftBtn = document.getElementById("leftBtn");
+    const rightBtn = document.getElementById("rightBtn");
 
-      // Storage keys
-      const BEST_KEY = "snake_best";
-      const LEADERBOARD_KEY = "snake_leaderboard_v1";
+    // --------------------------
+    // Leaderboard (Global Top 100)
+    // --------------------------
+    const top100Query = query(
+      collection(db, SCORES),
+      orderBy("best", "desc"),
+      orderBy("updatedAt", "desc"),
+      limit(100)
+    );
 
-      // State
-      let snake, dir, nextDir, food, score, best, running, paused, gameOverState;
-      let ticksPerSecond = Number(speedSel.value);
-      let wallsOn = wallsSel.value === "1";
-
-      // RAF timing
-      let lastTime = 0;
-      let acc = 0;
-      const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-
-      function speedName(tps) {
-        if (tps <= 10) return "Slow";
-        if (tps <= 12) return "Normal";
-        if (tps <= 15) return "Fast";
-        return "Insane";
+    function renderLeaderboard(rows) {
+      lbListEl.innerHTML = "";
+      if (!rows.length) {
+        const empty = document.createElement("div");
+        empty.className = "lbEmpty";
+        empty.textContent = "No scores yet.";
+        lbListEl.appendChild(empty);
+        return;
       }
 
-      function getPlayerName() {
-        const raw = (nameInput.value || "").trim();
-        return raw ? raw.slice(0, 16) : "Player";
+      rows.forEach((row, i) => {
+        const div = document.createElement("div");
+        div.className = "lbRow";
+        div.setAttribute("role", "listitem");
+
+        const rank = document.createElement("div");
+        rank.className = "lbRank";
+        rank.textContent = `#${i + 1}`;
+
+        const name = document.createElement("div");
+        name.className = "lbName";
+        name.textContent = row.ign || "Unknown";
+
+        const score = document.createElement("div");
+        score.className = "lbScore";
+        score.textContent = String(row.best ?? 0);
+
+        div.append(rank, name, score);
+        lbListEl.appendChild(div);
+      });
+    }
+
+    // Live updates
+    onSnapshot(top100Query, (snap) => {
+      const rows = snap.docs.map(d => d.data());
+      renderLeaderboard(rows);
+    });
+
+    // --------------------------
+    // Auth + IGN Profile
+    // --------------------------
+    let currentUser = null;
+    let currentIgn = "";
+
+    function cleanIgn(raw) {
+      const s = (raw || "").trim().slice(0, 16);
+      // allow letters/numbers/_- and spaces; remove weird chars
+      return s.replace(/[^\w\- ]/g, "");
+    }
+
+    async function ensureUserProfile(uid, ign) {
+      const userRef = doc(db, USERS, uid);
+      await setDoc(userRef, { uid, ign, updatedAt: Date.now() }, { merge: true });
+    }
+
+    async function loadUserIgn(uid) {
+      const userRef = doc(db, USERS, uid);
+      const snap = await getDoc(userRef);
+      if (!snap.exists()) return "";
+      return snap.data().ign || "";
+    }
+
+    async function signInFlow() {
+      const ign = cleanIgn(ignInput.value);
+      if (!ign) {
+        alert("Enter your IGN first, then sign in.");
+        ignInput.focus();
+        return;
       }
 
-      function loadBest() {
-        const v = localStorage.getItem(BEST_KEY);
-        best = v ? Number(v) : 0;
-        bestEl.textContent = best;
-      }
-      function saveBest() {
-        localStorage.setItem(BEST_KEY, String(best));
-        bestEl.textContent = best;
+      await signInWithPopup(auth, provider);
+
+      // after auth state updates, we save IGN to profile
+      // (see onAuthStateChanged)
+    }
+
+    async function signOutFlow() {
+      await signOut(auth);
+    }
+
+    signInBtn.addEventListener("click", signInFlow);
+    signOutBtn.addEventListener("click", signOutFlow);
+
+    function setSignedOutUI() {
+      authStatus.textContent = "Not signed in";
+      signInBtn.style.display = "";
+      signOutBtn.style.display = "none";
+      startBtn.disabled = true;
+      pauseBtn.disabled = true;
+      currentIgn = "";
+    }
+
+    function setSignedInUI(user, ign) {
+      authStatus.textContent = `Signed in: ${ign}`;
+      signInBtn.style.display = "none";
+      signOutBtn.style.display = "";
+      startBtn.disabled = false;
+      pauseBtn.disabled = false;
+      currentIgn = ign;
+    }
+
+    onAuthStateChanged(auth, async (user) => {
+      currentUser = user || null;
+
+      if (!currentUser) {
+        setSignedOutUI();
+        return;
       }
 
-      function loadLeaderboard() {
-        try {
-          const raw = localStorage.getItem(LEADERBOARD_KEY);
-          const arr = raw ? JSON.parse(raw) : [];
-          return Array.isArray(arr) ? arr : [];
-        } catch {
-          return [];
-        }
-      }
-      function saveLeaderboard(list) {
-        localStorage.setItem(LEADERBOARD_KEY, JSON.stringify(list));
-      }
-      function addToLeaderboard(entry) {
-        const list = loadLeaderboard();
-        list.push(entry);
-        list.sort((a, b) => (b.score - a.score) || (b.ts - a.ts));
-        const trimmed = list.slice(0, 100);
-        saveLeaderboard(trimmed);
-        renderLeaderboard(trimmed);
-      }
-      function renderLeaderboard(list = loadLeaderboard()) {
-        lbListEl.innerHTML = "";
-        if (!list.length) {
-          const empty = document.createElement("div");
-          empty.className = "lbEmpty";
-          empty.textContent = "No scores yet. Finish a run to get on the board!";
-          lbListEl.appendChild(empty);
+      // Use the typed IGN (required) if present; otherwise load existing profile
+      const typedIgn = cleanIgn(ignInput.value);
+      const existingIgn = await loadUserIgn(currentUser.uid);
+      const ignToUse = typedIgn || existingIgn || "Player";
+
+      ignInput.value = ignToUse;
+      await ensureUserProfile(currentUser.uid, ignToUse);
+
+      // Also ensure score doc always has latest IGN (best score updates are separate)
+      await setDoc(doc(db, SCORES, currentUser.uid), {
+        uid: currentUser.uid,
+        ign: ignToUse
+      }, { merge: true });
+
+      setSignedInUI(currentUser, ignToUse);
+    });
+
+    // --------------------------
+    // Snake Game
+    // --------------------------
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+
+    const scoreEl = document.getElementById("score");
+    const bestEl = document.getElementById("best");
+    const speedLabelEl = document.getElementById("speedLabel");
+
+    const GRID = 24;
+    const CELL = canvas.width / GRID;
+
+    const BG = "#0b1220";
+    const GRIDLINE = "rgba(255,255,255,0.06)";
+    const SNAKE = "#22c55e";
+    const SNAKE_HEAD = "#86efac";
+    const FOOD = "#ef4444";
+
+    let snake, dir, nextDir, food, score, bestLocal, running, paused, gameOverState;
+    let ticksPerSecond = Number(speedSel.value);
+    let wallsOn = wallsSel.value === "1";
+
+    let lastTime = 0;
+    let acc = 0;
+    const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+
+    function speedName(tps) {
+      if (tps <= 10) return "Slow";
+      if (tps <= 12) return "Normal";
+      if (tps <= 15) return "Fast";
+      return "Insane";
+    }
+
+    // local best (still helpful)
+    function loadLocalBest() {
+      const v = localStorage.getItem("snake_best_local");
+      bestLocal = v ? Number(v) : 0;
+      bestEl.textContent = bestLocal;
+    }
+    function saveLocalBest() {
+      localStorage.setItem("snake_best_local", String(bestLocal));
+      bestEl.textContent = bestLocal;
+    }
+
+    function resetGame() {
+      snake = [
+        { x: 12, y: 12 },
+        { x: 11, y: 12 },
+        { x: 10, y: 12 }
+      ];
+      dir = { x: 1, y: 0 };
+      nextDir = { x: 1, y: 0 };
+      score = 0;
+      scoreEl.textContent = score;
+
+      gameOverState = false;
+      paused = false;
+      running = false;
+      pauseBtn.textContent = "Pause";
+
+      placeFood();
+      draw();
+    }
+
+    function placeFood() {
+      const occupied = new Set(snake.map(p => `${p.x},${p.y}`));
+      while (true) {
+        const fx = Math.floor(Math.random() * GRID);
+        const fy = Math.floor(Math.random() * GRID);
+        if (!occupied.has(`${fx},${fy}`)) {
+          food = { x: fx, y: fy };
           return;
         }
-        list.forEach((row, i) => {
-          const div = document.createElement("div");
-          div.className = "lbRow";
-          div.setAttribute("role", "listitem");
-
-          const rank = document.createElement("div");
-          rank.className = "lbRank";
-          rank.textContent = `#${i + 1}`;
-
-          const name = document.createElement("div");
-          name.className = "lbName";
-          name.textContent = row.name;
-
-          const sc = document.createElement("div");
-          sc.className = "lbScore";
-          sc.textContent = String(row.score);
-
-          div.append(rank, name, sc);
-          lbListEl.appendChild(div);
-        });
       }
+    }
 
-      function resetGame() {
-        snake = [
-          { x: 12, y: 12 },
-          { x: 11, y: 12 },
-          { x: 10, y: 12 }
-        ];
-        dir = { x: 1, y: 0 };
-        nextDir = { x: 1, y: 0 };
-        score = 0;
-        scoreEl.textContent = score;
+    function beginLoop() {
+      running = true;
+      paused = false;
+      pauseBtn.textContent = "Pause";
+      lastTime = performance.now();
+      acc = 0;
+      requestAnimationFrame(loop);
+    }
 
-        gameOverState = false;
-        paused = false;
-        running = false;
-        pauseBtn.textContent = "Pause";
-
-        placeFood();
-        draw();
+    // Start button: always starts a fresh run (only if signed in)
+    function startNewGame() {
+      if (!currentUser) {
+        alert("Sign in with your IGN first.");
+        return;
       }
-
-      function placeFood() {
-        const occupied = new Set(snake.map(p => `${p.x},${p.y}`));
-        while (true) {
-          const fx = Math.floor(Math.random() * GRID);
-          const fy = Math.floor(Math.random() * GRID);
-          if (!occupied.has(`${fx},${fy}`)) {
-            food = { x: fx, y: fy };
-            return;
-          }
-        }
+      // keep IGN synced to profile
+      const ign = cleanIgn(ignInput.value);
+      if (!ign) {
+        alert("Enter your IGN first.");
+        ignInput.focus();
+        return;
       }
+      // update profile ign
+      ensureUserProfile(currentUser.uid, ign).catch(() => {});
+      setDoc(doc(db, SCORES, currentUser.uid), { uid: currentUser.uid, ign }, { merge: true }).catch(() => {});
 
-      // Start button: ALWAYS start a fresh game
-      function startNewGame() {
-        resetGame();
-        beginLoop();
-        // optional: move immediately on Start instead of waiting a full tick
-        // tick();
-      }
+      resetGame();
+      beginLoop();
+      // optional: first step immediately feels better
+      // tick();
+    }
 
-      // Arrow key / D-pad start: ONLY when idle (not running) and NOT after game over
-      function startFromIdle() {
-        if (running || paused || gameOverState) return;
-        beginLoop();
-        // Make it feel instant: take the first step right away
-        tick();
-      }
+    // Arrow key starts when idle (not running) BUT only if signed in and NOT after game over
+    function startFromIdle() {
+      if (running || paused || gameOverState) return;
+      if (!currentUser) return; // must be signed in
+      beginLoop();
+      tick(); // instant move
+    }
 
-      function beginLoop() {
-        running = true;
-        paused = false;
-        pauseBtn.textContent = "Pause";
-        lastTime = performance.now();
-        acc = 0;
-        requestAnimationFrame(loop);
-      }
+    function togglePause() {
+      if (!running || gameOverState) return;
+      paused = !paused;
+      pauseBtn.textContent = paused ? "Resume" : "Pause";
+    }
 
-      function togglePause() {
-        if (!running || gameOverState) return;
-        paused = !paused;
-        pauseBtn.textContent = paused ? "Resume" : "Pause";
-      }
+    async function submitScoreIfHigher(finalScore) {
+      if (!currentUser) return;
 
-      function gameOver() {
-        running = false;
-        paused = false;
-        gameOverState = true;
+      const ign = cleanIgn(ignInput.value) || currentIgn || "Player";
+      const scoreRef = doc(db, SCORES, currentUser.uid);
 
-        if (score > best) {
-          best = score;
-          saveBest();
+      await runTransaction(db, async (tx) => {
+        const snap = await tx.get(scoreRef);
+        const prev = snap.exists() ? (snap.data().best ?? 0) : 0;
+
+        if (!snap.exists()) {
+          tx.set(scoreRef, {
+            uid: currentUser.uid,
+            ign,
+            best: finalScore,
+            updatedAt: Date.now()
+          }, { merge: true });
+          return;
         }
 
-        if (score > 0) {
-          addToLeaderboard({ name: getPlayerName(), score, ts: Date.now() });
+        if (finalScore > prev) {
+          tx.set(scoreRef, {
+            uid: currentUser.uid,
+            ign,
+            best: finalScore,
+            updatedAt: Date.now()
+          }, { merge: true });
         } else {
-          renderLeaderboard();
+          // still keep IGN updated (optional)
+          tx.set(scoreRef, { ign, updatedAt: Date.now() }, { merge: true });
         }
+      });
+    }
 
-        draw();
-        ctx.fillStyle = "rgba(0,0,0,0.55)";
+    function gameOver() {
+      running = false;
+      paused = false;
+      gameOverState = true;
+
+      if (score > bestLocal) {
+        bestLocal = score;
+        saveLocalBest();
+      }
+
+      // Global leaderboard submit (only best is stored)
+      submitScoreIfHigher(score).catch(() => {});
+
+      // overlay
+      draw();
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 40px system-ui, sans-serif";
+      ctx.textAlign = "center";
+      ctx.fillText("Game Over", canvas.width / 2, canvas.height / 2 - 10);
+      ctx.font = "16px system-ui, sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      ctx.fillText("Press Start to play again", canvas.width / 2, canvas.height / 2 + 22);
+    }
+
+    function setDirection(nx, ny) {
+      if (gameOverState) return; // only Start can restart after game over
+      if (nx === -dir.x && ny === -dir.y) return;
+      nextDir = { x: nx, y: ny };
+    }
+
+    function tick() {
+      if (!running || paused) return;
+
+      dir = nextDir;
+      const head = snake[0];
+      let nx = head.x + dir.x;
+      let ny = head.y + dir.y;
+
+      if (wallsOn) {
+        if (nx < 0 || nx >= GRID || ny < 0 || ny >= GRID) {
+          gameOver();
+          return;
+        }
+      } else {
+        nx = (nx + GRID) % GRID;
+        ny = (ny + GRID) % GRID;
+      }
+
+      const newHead = { x: nx, y: ny };
+
+      for (let i = 0; i < snake.length; i++) {
+        if (snake[i].x === newHead.x && snake[i].y === newHead.y) {
+          gameOver();
+          return;
+        }
+      }
+
+      snake.unshift(newHead);
+
+      if (newHead.x === food.x && newHead.y === food.y) {
+        score += 1;
+        scoreEl.textContent = score;
+        placeFood();
+      } else {
+        snake.pop();
+      }
+
+      draw();
+    }
+
+    function drawGrid() {
+      ctx.fillStyle = BG;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.strokeStyle = GRIDLINE;
+      ctx.lineWidth = 1;
+
+      for (let i = 1; i < GRID; i++) {
+        const p = i * CELL;
+        ctx.beginPath(); ctx.moveTo(p, 0); ctx.lineTo(p, canvas.height); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(0, p); ctx.lineTo(canvas.width, p); ctx.stroke();
+      }
+    }
+
+    function draw() {
+      drawGrid();
+
+      // Food
+      ctx.fillStyle = FOOD;
+      ctx.beginPath();
+      ctx.roundRect(food.x * CELL + 4, food.y * CELL + 4, CELL - 8, CELL - 8, 8);
+      ctx.fill();
+
+      // Snake
+      for (let i = snake.length - 1; i >= 0; i--) {
+        const p = snake[i];
+        ctx.fillStyle = (i === 0) ? SNAKE_HEAD : SNAKE;
+        ctx.beginPath();
+        ctx.roundRect(p.x * CELL + 3, p.y * CELL + 3, CELL - 6, CELL - 6, 10);
+        ctx.fill();
+      }
+
+      if (running && paused) {
+        ctx.fillStyle = "rgba(0,0,0,0.45)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 40px system-ui, sans-serif";
+        ctx.font = "bold 34px system-ui, sans-serif";
         ctx.textAlign = "center";
-        ctx.fillText("Game Over", canvas.width / 2, canvas.height / 2 - 10);
-        ctx.font = "16px system-ui, sans-serif";
-        ctx.fillStyle = "rgba(255,255,255,0.85)";
-        ctx.fillText("Press Start to play again", canvas.width / 2, canvas.height / 2 + 22);
+        ctx.fillText("Paused", canvas.width / 2, canvas.height / 2);
+      }
+    }
+
+    function loop(t) {
+      if (!running) return;
+
+      const dt = (t - lastTime) / 1000;
+      lastTime = t;
+      acc += dt;
+
+      const step = 1 / clamp(ticksPerSecond, 5, 30);
+      while (acc >= step) {
+        tick();
+        acc -= step;
       }
 
-      function setDirection(nx, ny) {
-        // After game over, ignore all movement inputs (Start is the only restart)
-        if (gameOverState) return;
+      requestAnimationFrame(loop);
+    }
 
-        // Prevent reversing into itself
-        if (nx === -dir.x && ny === -dir.y) return;
+    // Keyboard
+    document.addEventListener("keydown", (e) => {
+      const k = e.key.toLowerCase();
 
-        nextDir = { x: nx, y: ny };
+      // Must be signed in to play
+      if (!currentUser) return;
+
+      if (gameOverState) {
+        if (k === "r") resetGame();
+        return;
       }
 
-      function tick() {
-        if (!running || paused) return;
+      if (k === "arrowup" || k === "w") { setDirection(0, -1); startFromIdle(); }
+      else if (k === "arrowdown" || k === "s") { setDirection(0, 1); startFromIdle(); }
+      else if (k === "arrowleft" || k === "a") { setDirection(-1, 0); startFromIdle(); }
+      else if (k === "arrowright" || k === "d") { setDirection(1, 0); startFromIdle(); }
+      else if (k === " ") togglePause();
+      else if (k === "r") resetGame();
+    });
 
-        dir = nextDir;
+    // Buttons
+    startBtn.addEventListener("click", startNewGame);
+    pauseBtn.addEventListener("click", togglePause);
+    resetBtn.addEventListener("click", resetGame);
 
-        const head = snake[0];
-        let nx = head.x + dir.x;
-        let ny = head.y + dir.y;
-
-        if (wallsOn) {
-          if (nx < 0 || nx >= GRID || ny < 0 || ny >= GRID) {
-            gameOver();
-            return;
-          }
-        } else {
-          nx = (nx + GRID) % GRID;
-          ny = (ny + GRID) % GRID;
-        }
-
-        const newHead = { x: nx, y: ny };
-
-        // Collision with body
-        for (let i = 0; i < snake.length; i++) {
-          if (snake[i].x === newHead.x && snake[i].y === newHead.y) {
-            gameOver();
-            return;
-          }
-        }
-
-        snake.unshift(newHead);
-
-        // Eat food?
-        if (newHead.x === food.x && newHead.y === food.y) {
-          score += 1;
-          scoreEl.textContent = score;
-          placeFood();
-        } else {
-          snake.pop();
-        }
-
-        draw();
-      }
-
-      function drawGrid() {
-        ctx.fillStyle = BG;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.strokeStyle = GRIDLINE;
-        ctx.lineWidth = 1;
-
-        for (let i = 1; i < GRID; i++) {
-          const p = i * CELL;
-
-          ctx.beginPath();
-          ctx.moveTo(p, 0);
-          ctx.lineTo(p, canvas.height);
-          ctx.stroke();
-
-          ctx.beginPath();
-          ctx.moveTo(0, p);
-          ctx.lineTo(canvas.width, p);
-          ctx.stroke();
-        }
-      }
-
-      function draw() {
-        drawGrid();
-
-        // Food
-        ctx.fillStyle = FOOD;
-        ctx.beginPath();
-        ctx.roundRect(food.x * CELL + 4, food.y * CELL + 4, CELL - 8, CELL - 8, 8);
-        ctx.fill();
-
-        // Snake
-        for (let i = snake.length - 1; i >= 0; i--) {
-          const p = snake[i];
-          ctx.fillStyle = (i === 0) ? SNAKE_HEAD : SNAKE;
-          ctx.beginPath();
-          ctx.roundRect(p.x * CELL + 3, p.y * CELL + 3, CELL - 6, CELL - 6, 10);
-          ctx.fill();
-        }
-
-        // paused overlay
-        if (running && paused) {
-          ctx.fillStyle = "rgba(0,0,0,0.45)";
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.fillStyle = "#ffffff";
-          ctx.font = "bold 34px system-ui, sans-serif";
-          ctx.textAlign = "center";
-          ctx.fillText("Paused", canvas.width / 2, canvas.height / 2);
-        }
-      }
-
-      function loop(t) {
-        if (!running) return;
-
-        const dt = (t - lastTime) / 1000;
-        lastTime = t;
-        acc += dt;
-
-        const step = 1 / clamp(ticksPerSecond, 5, 30);
-        while (acc >= step) {
-          tick();
-          acc -= step;
-        }
-
-        requestAnimationFrame(loop);
-      }
-
-      // Controls: keyboard
-      document.addEventListener("keydown", (e) => {
-        const k = e.key.toLowerCase();
-
-        // After game over, only Start button restarts
-        if (gameOverState) {
-          if (k === "r") resetGame(); // optional: allow reset without starting
-          return;
-        }
-
-        if (k === "arrowup" || k === "w") { setDirection(0, -1); startFromIdle(); }
-        else if (k === "arrowdown" || k === "s") { setDirection(0, 1); startFromIdle(); }
-        else if (k === "arrowleft" || k === "a") { setDirection(-1, 0); startFromIdle(); }
-        else if (k === "arrowright" || k === "d") { setDirection(1, 0); startFromIdle(); }
-        else if (k === " ") togglePause();
-        else if (k === "r") { resetGame(); }
-      });
-
-      // Controls: buttons
-      startBtn.addEventListener("click", startNewGame);
-      pauseBtn.addEventListener("click", togglePause);
-      resetBtn.addEventListener("click", resetGame);
-
-      // Controls: speed/walls
-      speedSel.addEventListener("change", () => {
-        ticksPerSecond = Number(speedSel.value);
-        speedLabelEl.textContent = speedName(ticksPerSecond);
-      });
-      wallsSel.addEventListener("change", () => {
-        wallsOn = wallsSel.value === "1";
-      });
-
-      // Controls: D-pad (starts from idle, but NOT after game over)
-      const tap = (btn, dx, dy) => {
-        btn.addEventListener("click", () => {
-          if (gameOverState) return;
-          setDirection(dx, dy);
-          startFromIdle();
-        });
-      };
-      tap(upBtn, 0, -1);
-      tap(downBtn, 0, 1);
-      tap(leftBtn, -1, 0);
-      tap(rightBtn, 1, 0);
-
-      // Leaderboard clear
-      clearLbBtn.addEventListener("click", () => {
-        localStorage.removeItem(LEADERBOARD_KEY);
-        renderLeaderboard([]);
-      });
-
-      // roundRect fallback (older browsers)
-      if (!CanvasRenderingContext2D.prototype.roundRect) {
-        CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
-          r = Math.min(r, w / 2, h / 2);
-          this.beginPath();
-          this.moveTo(x + r, y);
-          this.arcTo(x + w, y, x + w, y + h, r);
-          this.arcTo(x + w, y + h, x, y + h, r);
-          this.arcTo(x, y + h, x, y, r);
-          this.arcTo(x, y, x + w, y, r);
-          this.closePath();
-          return this;
-        };
-      }
-
-      // Init
-      loadBest();
-      renderLeaderboard();
+    speedSel.addEventListener("change", () => {
+      ticksPerSecond = Number(speedSel.value);
       speedLabelEl.textContent = speedName(ticksPerSecond);
-      resetGame();
-    })();
+    });
+
+    wallsSel.addEventListener("change", () => {
+      wallsOn = wallsSel.value === "1";
+    });
+
+    // D-pad (also starts from idle, but only if signed in)
+    const tap = (btn, dx, dy) => {
+      btn.addEventListener("click", () => {
+        if (!currentUser) return;
+        if (gameOverState) return;
+        setDirection(dx, dy);
+        startFromIdle();
+      });
+    };
+    tap(upBtn, 0, -1);
+    tap(downBtn, 0, 1);
+    tap(leftBtn, -1, 0);
+    tap(rightBtn, 1, 0);
+
+    // roundRect fallback
+    if (!CanvasRenderingContext2D.prototype.roundRect) {
+      CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
+        r = Math.min(r, w / 2, h / 2);
+        this.beginPath();
+        this.moveTo(x + r, y);
+        this.arcTo(x + w, y, x + w, y + h, r);
+        this.arcTo(x + w, y + h, x, y + h, r);
+        this.arcTo(x, y + h, x, y, r);
+        this.arcTo(x, y, x + w, y, r);
+        this.closePath();
+        return this;
+      };
+    }
+
+    // Init
+    loadLocalBest();
+    speedLabelEl.textContent = speedName(ticksPerSecond);
+    resetGame();
   </script>
 </body>
 </html>
