@@ -960,7 +960,9 @@
 
     if(board.ships.length === SHIPS.length){
       toastLeft.textContent = "All ships placed! Click Start Battle.";
-    } else {
+    }
+    maybeSavePlacementOnline(placingPlayer);
+    else {
       toastLeft.textContent = `Placed ${ship.name}. Next: ${SHIPS[board.ships.length].name}`;
     }
 
@@ -986,6 +988,8 @@
     clearPreview(yourGridEl);
 
     if(board.ships.length === SHIPS.length) toastLeft.textContent = "All ships placed! Click Start Battle.";
+    const placingPlayer = (state.phase === "place_p2") ? 1 : 0;
+    maybeSavePlacementOnline(placingPlayer);
     else toastLeft.textContent = `Placed ${ship.name}. Next: ${SHIPS[board.ships.length].name}`;
     renderAll(false);
   }
@@ -1402,12 +1406,16 @@
   btnRandom.addEventListener("click", () => {
     if(state.phase === "place_p1"){
       randomizeBoard(0);
+      // ✅ ONLINE: save Player 1 placement after randomize
+      if(mp.enabled) maybeSavePlacementOnline(0);
       if(state.mode === "pvc"){ randomizeBoard(1); toastLeft.textContent = "Ships randomized. Click Start Battle."; }
       else { toastLeft.textContent = "Player 1 ships randomized. Pass to Player 2."; }
       sClick();
       renderAll(false);
     } else if(state.phase === "place_p2"){
       randomizeBoard(1);
+      // ✅ ONLINE: save Player 2 placement after randomize
+      if(mp.enabled) maybeSavePlacementOnline(1);
       toastLeft.textContent = "Player 2 ships randomized. Click Start Battle.";
       sClick();
       renderAll(false);
