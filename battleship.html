@@ -1270,7 +1270,13 @@ async function mpSetWinner(winnerSlot){
 
   function onEnemyClick(r,c, cellEl){
     if(state.phase !== "battle") return;
-
+    
+    // ONLINE PvP: submit move, let Firebase results drive the UI
+    if(mp.enabled){
+      mpSubmitMove(idx(r,c));
+      return;
+  }
+    
     const attacker = state.turn;
 
     // PvC: only player can click enemy
