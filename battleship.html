@@ -328,7 +328,36 @@
       </div>
     </div>
   </div>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.4/firebase-app.js";
+    import { getDatabase, ref, set, get, update, onValue, push, child, serverTimestamp } 
+      from "https://www.gstatic.com/firebasejs/10.12.4/firebase-database.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } 
+      from "https://www.gstatic.com/firebasejs/10.12.4/firebase-auth.js";
 
+     const firebaseConfig = {
+      apiKey: "AIzaSyDUztsi3L1m2d_ITeDvdBZrEe23dQUH15A",
+      authDomain: "redsun-battleship.firebaseapp.com",
+      projectId: "redsun-battleship",
+      storageBucket: "redsun-battleship.firebasestorage.app",
+      messagingSenderId: "833142786494",
+      appId: "1:833142786494:web:16543f0523c0d4832151ef",
+      measurementId: "G-SR24MKJBLD"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+
+    await signInAnonymously(auth);
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) return;
+      window.RSFB = { db, ref, set, get, update, onValue, push, child, serverTimestamp, uid: user.uid };
+      window.dispatchEvent(new Event("rsfb-ready"));
+    });
+</script>
+  
 <script>
 (() => {
   const SIZE = 10;
