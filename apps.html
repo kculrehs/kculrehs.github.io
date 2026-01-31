@@ -1,45 +1,185 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>Our Games – Redsun</title>
-    <link rel="stylesheet" href="assets/css/styles.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Our Games — Redsun</title>
+  <link rel="stylesheet" href="assets/css/styles.css" />
 </head>
+
 <body>
-    <header>
-        <h1>Our Games</h1>
-        <nav>
-            <a href="index.html">Home</a>
-            <a href="apps.html">Our Games</a>
-        </nav>
-    </header>
-    <main class="app-grid">
-        <div class="app-card">
-            <img src="assets/images/sky-dash.png" alt="Sky Dash: Jetpack Hero">
-            <h3>Sky Dash: Jetpack Hero</h3>
-            <p>An endless runner with power-ups & global leaderboards.</p>
-            <a href="https://play.google.com/store/apps/details?id=redsun.skydash" target="_blank">Play & Download</a>
+  <!-- Top Nav -->
+  <header class="topbar">
+    <div class="container nav-wrap">
+      <a class="brand" href="index.html">
+        <span class="brand-dot" aria-hidden="true"></span>
+        <span class="brand-name">Redsun</span>
+      </a>
+
+      <nav class="nav">
+        <a href="index.html" class="nav-link">Home</a>
+        <a href="apps.html" class="nav-link active">Our Games</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- Page Hero -->
+    <section class="hero hero-small">
+      <div class="container hero-grid">
+        <div class="hero-left">
+          <p class="pill">Playable • Downloadable • Mobile-first</p>
+          <h1>Our Games</h1>
+          <p class="subtext">
+            Quick fun, fast gameplay, and clean design. Here are the games we’ve built so far.
+          </p>
         </div>
-        <!-- duplicate .app-card for each additional game -->
-        <div class="app-card">
-            <img src="assets/images/snake.png" alt="Snake Game">
-            <h3>Snake</h3>
-            <p>A classic Snake game you can play instantly in your browser.</p>
-            <a href="snake.html">Play Now</a>
+
+        <div class="hero-right">
+          <div class="hero-card compact">
+            <div class="glow"></div>
+            <h2>What we focus on</h2>
+            <p class="muted">Simple controls, smooth performance, and replay value.</p>
+
+            <div class="card-grid small">
+              <div class="tile">
+                <span class="tile-emoji">⚡</span>
+                <span class="tile-title">Fast</span>
+                <span class="tile-sub">Instant gameplay</span>
+              </div>
+              <div class="tile">
+                <span class="tile-emoji">🎯</span>
+                <span class="tile-title">Skill</span>
+                <span class="tile-sub">Mastery loops</span>
+              </div>
+              <div class="tile">
+                <span class="tile-emoji">📱</span>
+                <span class="tile-title">Mobile</span>
+                <span class="tile-sub">Touch-first UI</span>
+              </div>
+              <div class="tile">
+                <span class="tile-emoji">🏆</span>
+                <span class="tile-title">Replay</span>
+                <span class="tile-sub">Chase scores</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="app-card">
-            <img src="assets/images/tetris.png" alt="Tetris Game">
-            <h3>Tetris</h3>
-            <p>A classic block-stacking puzzle game you can play in your browser.</p>
-            <a href="tetris.html">Play Now</a>
+      </div>
+    </section>
+
+    <!-- Games Grid -->
+    <section class="section">
+      <div class="container">
+        <div class="section-head">
+          <h2>Game Library</h2>
+          <p class="muted">Tap a game to play in browser or download on Google Play.</p>
         </div>
-        <div class="app-card">
-            <img src="assets/images/2048.png" alt="2048 Game">
-            <h3>2048</h3>
-            <p>A classic number puzzle game you can play in your browser.</p>
-            <a href="2048.html">Play Now</a>
+
+        <div class="games-grid">
+          <!-- Sky Dash -->
+          <article class="game-card">
+            <div class="game-thumb">
+              <img src="assets/images/sky-dash.png" alt="Sky Dash: Jetpack Hero" />
+            </div>
+
+            <div class="game-meta">
+              <span class="tag tag-hot">Featured</span>
+              <span class="tag">Mobile</span>
+            </div>
+
+            <h3 class="game-title">Sky Dash: Jetpack Hero</h3>
+            <p class="muted">
+              Endless runner with power-ups and a global leaderboard. Fly fast, dodge obstacles, beat your best.
+            </p>
+
+            <div class="btn-row">
+              <a class="btn btn-primary" href="https://play.google.com/store/apps/details?id=redsun.skydash" target="_blank" rel="noopener">
+                Play & Download
+              </a>
+              <a class="btn btn-ghost" href="index.html">Back to Home</a>
+            </div>
+          </article>
+
+          <!-- Snake -->
+          <article class="game-card">
+            <div class="game-thumb">
+              <img src="assets/images/snake.png" alt="Snake Game" />
+            </div>
+
+            <div class="game-meta">
+              <span class="tag">Browser</span>
+              <span class="tag">Classic</span>
+            </div>
+
+            <h3 class="game-title">Snake Classic</h3>
+            <p class="muted">
+              A classic Snake game you can play instantly in your browser. Smooth controls, clean look, pure nostalgia.
+            </p>
+
+            <div class="btn-row">
+              <a class="btn btn-primary" href="snake.html">Play Now</a>
+              <a class="btn btn-ghost" href="index.html">Back to Home</a>
+            </div>
+          </article>
+
+          <!-- Tetris -->
+          <article class="game-card">
+            <div class="game-thumb">
+              <img src="assets/images/tetris.png" alt="Tetris Game" />
+            </div>
+
+            <div class="game-meta">
+              <span class="tag">Browser</span>
+              <span class="tag">Puzzle</span>
+            </div>
+
+            <h3 class="game-title">Block Drop (Tetris)</h3>
+            <p class="muted">
+              A classic block-stacking puzzle game you can play in your browser. Clear lines, increase speed, stay alive.
+            </p>
+
+            <div class="btn-row">
+              <a class="btn btn-primary" href="tetris.html">Play Now</a>
+              <a class="btn btn-ghost" href="index.html">Back to Home</a>
+            </div>
+          </article>
+
+          <!-- 2048 -->
+          <article class="game-card">
+            <div class="game-thumb">
+              <img src="assets/images/2048.png" alt="2048 Game" />
+            </div>
+
+            <div class="game-meta">
+              <span class="tag">Browser</span>
+              <span class="tag">Numbers</span>
+            </div>
+
+            <h3 class="game-title">2048 Merge</h3>
+            <p class="muted">
+              A classic number puzzle game you can play in your browser. Combine tiles, plan moves, and reach 2048.
+            </p>
+
+            <div class="btn-row">
+              <a class="btn btn-primary" href="2048.html">Play Now</a>
+              <a class="btn btn-ghost" href="index.html">Back to Home</a>
+            </div>
+          </article>
         </div>
-    </main>
-    <footer>© 2025 Redsun</footer>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-wrap">
+      <p class="muted">© 2025 Redsun</p>
+      <div class="footer-links">
+        <a href="index.html">Home</a>
+        <a href="apps.html">Our Games</a>
+      </div>
+    </div>
+  </footer>
 </body>
 </html>
+
