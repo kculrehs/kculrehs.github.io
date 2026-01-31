@@ -402,6 +402,157 @@
   const btnClearHistory = el("clearHistory");
   const historyStats = el("historyStats");
   const historyLast = el("historyLast");
+  
+// ---------- Multiplayer (Firebase) ----------
+  let mp = {
+    enabled: false,
+    roomId: null,
+    uid: null,
+    slot: null,     // 0 or 1
+    unsub: null,
+    remote: null,
+    ready: false
+  };
+
+  function code6(){
+    const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+    let out = "";
+    for(let i=0;i<6;i++) out += chars[Math.floor(Math.random()*chars.length)];
+    return out;
+  }
+
+  function mpEls(){
+    return {
+      roomCode: document.getElementById("roomCode"),
+      createRoom: document.getElementById("createRoom"),
+      joinRoom: document.getElementById("joinRoom"),
+      roomStatus: document.getElementById("roomStatus"),
+    };
+  }
+
+  function setRoomStatus(text){
+    const { roomStatus } = mpEls();
+    if(roomStatus) roomStatus.textContent = text;
+  }
+
+  // Wait until Firebase is ready
+  window.addEventListener("rsfb-ready", () => {
+    mp.uid = window.RSFB.uid;
+    hookRoomButtons();
+    setRoomStatus("Online ready.");
+  });
+
+  function hookRoomButtons(){
+    const { createRoom, joinRoom } = mpEls();
+    createRoom?.addEventListener("click", createRoomFlow);
+    joinRoom?.addEventListener("click", joinRoomFlow);
+  }
+
+  async function createRoomFlow(){
+    const FB = window.RSFB;
+    if(!FB) return;
+
+    const roomId = code6();
+    mp.roomId = roomId;
+    mp.enabled = true;
+
+    // creator becomes slot 0
+    mp.slot = 0;
+
+    const roomRef = FB.ref(FB.db, `rooms/${roomId}`);
+    await FB.set(roomRef, {
+      meta: { createdAt: Date.now(), createdBy: mp.uid },
+      public: {
+        phase: "placing",
+        turn: 0,
+        shootAgainOnHit: true,
+        mode: "pvp_online",
+        winner: null
+      },
+      players: {
+        "0": { uid: mp.uid, joinedAt: Date.now(), ready: false },
+        "1": null
+      }
+    });
+
+    setRoomStatus(`Room created: ${roomId} (share code)`);
+    mpListen(roomId);
+  }
+
+  async function joinRoomFlow(){
+    const FB = window.RSFB;
+    if(!FB) return;
+
+    const { roomCode } = mpEls();
+    const roomId = (roomCode?.value || "").trim().toUpperCase();
+    if(!roomId){ setRoomStatus("Enter room code."); return; }
+
+    const roomRef = FB.ref(FB.db, `rooms/${roomId}`);
+    const snap = await FB.get(roomRef);
+    if(!snap.exists()){ setRoomStatus("Room not found."); return; }
+
+    const data = snap.val();
+    const p0 = data?.players?.["0"];
+    const p1 = data?.players?.["1"];
+
+    if(p1 && p1.uid && p1.uid !== mp.uid){
+      setRoomStatus("Room is full.");
+      return;
+    }
+
+    mp.roomId = roomId;
+    mp.enabled = true;
+
+    // joiner becomes slot 1
+    mp.slot = (p0 && p0.uid === mp.uid) ? 0 : 1;
+
+    await FB.update(FB.ref(FB.db, `rooms/${roomId}/players/${mp.slot}`), {
+      uid: mp.uid,
+      joinedAt: Date.now(),
+      ready: false
+    });
+
+    setRoomStatus(`Joined room: ${roomId}`);
+    mpListen(roomId);
+  }
+
+  function mpListen(roomId){
+    const FB = window.RSFB;
+    if(!FB) return;
+
+    const roomRef = FB.ref(FB.db, `rooms/${roomId}`);
+    if(mp.unsub) mp.unsub();
+
+    const unsub = FB.onValue(roomRef, (snap) => {
+      if(!snap.exists()) return;
+      mp.remote = snap.val();
+      mpApplyRemote();
+    });
+
+    mp.unsub = unsub;
+  }
+
+  function mpApplyRemote(){
+    const r = mp.remote;
+    if(!r) return;
+
+    // Update your UI based on room state
+    const phase = r.public?.phase || "placing";
+    const turn  = r.public?.turn ?? 0;
+
+    // Example: sync shoot-again toggle
+    const shootAgainChk = document.getElementById("shootAgain");
+    if(shootAgainChk){
+      shootAgainChk.checked = !!r.public?.shootAgainOnHit;
+    }
+
+    // Example: show room status
+    setRoomStatus(`Room ${mp.roomId} • Phase: ${phase} • Turn: P${turn+1}`);
+
+    // TODO: in your existing code, map phase/turn into your local state
+    // - placing -> each player places privately
+    // - battle -> use moves feed
+  }
 
   // ---------- Tiny Sound Engine ----------
   let audioCtx = null;
