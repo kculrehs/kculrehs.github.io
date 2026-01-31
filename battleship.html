@@ -545,6 +545,36 @@
     if(shootAgainChk){
       shootAgainChk.checked = !!r.public?.shootAgainOnHit;
     }
+    
+  async function mpSavePlacementIfOnline(board){
+    if(!mp.enabled || !mp.roomId || !window.RSFB) return;
+    const FB = window.RSFB;
+
+    // minimal placement: ship cells only
+    const placement = board.ships.map(s => ({ name: s.name, len: s.len, cells: s.cells }));
+
+    await FB.set(FB.ref(FB.db, `rooms/${mp.roomId}/private/${mp.uid}/placement`), {
+      uid: mp.uid,
+      slot: mp.slot,
+      placement,
+      savedAt: Date.now()
+    });
+
+    await FB.update(FB.ref(FB.db, `rooms/${mp.roomId}/players/${mp.slot}`), {
+      ready: true
+    });
+
+    mp.ready = true;
+    setRoomStatus("Placement saved. Waiting for opponent...");
+  }
+
+  function maybeSavePlacementOnline(placingPlayer){
+    if(!mp.enabled) return;
+    const board = state.boards[placingPlayer];
+    if(allShipsPlaced(board) && !mp.ready){
+      mpSavePlacementIfOnline(board);
+    }
+  }
 
     // Example: show room status
     setRoomStatus(`Room ${mp.roomId} • Phase: ${phase} • Turn: P${turn+1}`);
