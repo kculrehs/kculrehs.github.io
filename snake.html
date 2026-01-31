@@ -105,6 +105,7 @@
     button.danger:hover { border-color: rgba(239,68,68,0.6); }
     input { cursor: text; width: 160px; }
     input::placeholder { color: rgba(229,231,235,0.45); }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
 
     .hint { color: var(--muted); font-size: 13px; line-height: 1.35; }
 
@@ -176,6 +177,8 @@
     .lbName { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .lbScore { text-align: right; font-variant-numeric: tabular-nums; font-weight: 800; }
     .lbEmpty { padding: 14px; color: var(--muted); font-size: 13px; text-align: center; }
+
+    .tinyNote { font-size: 12px; color: rgba(229,231,235,0.6); }
   </style>
 </head>
 
@@ -191,6 +194,7 @@
     </header>
 
     <div class="content">
+      <!-- Game panel -->
       <div class="panel">
         <div class="authbar">
           <div class="authleft">
@@ -252,6 +256,7 @@
         </div>
       </div>
 
+      <!-- Leaderboard panel -->
       <aside class="panel" aria-label="Leaderboard">
         <div class="lbHead">
           <div>
@@ -260,21 +265,38 @@
           </div>
         </div>
         <div class="lbList" id="lbList" role="list"></div>
+        <div class="tinyNote">Scores are saved to Firebase (Firestore) per signed-in user.</div>
       </aside>
     </div>
   </div>
 
   <script type="module">
-    // Firebase (Auth + Firestore)
+    // --------------------------
+    // Firebase (Auth + Firestore) - CDN v10.12.5
+    // --------------------------
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
     import {
-      getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+      getAuth,
+      GoogleAuthProvider,
+      signInWithPopup,
+      signOut,
+      onAuthStateChanged
     } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
     import {
-      getFirestore, doc, getDoc, setDoc, runTransaction,
-      collection, query, orderBy, limit, onSnapshot, serverTimestamp
+      getFirestore,
+      doc,
+      getDoc,
+      setDoc,
+      runTransaction,
+      collection,
+      query,
+      orderBy,
+      limit,
+      onSnapshot,
+      serverTimestamp
     } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
+    // ✅ Your Firebase config (as provided)
     const firebaseConfig = {
       apiKey: "AIzaSyCC1hxWanBV88i_-uKFX3X639c2srv1FR0",
       authDomain: "redsun-snake-leaderboard.firebaseapp.com",
@@ -290,10 +312,15 @@
     const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
 
+    // Collections:
+    // users/{uid}  -> { uid, ign, updatedAt }
+    // scores/{uid} -> { uid, ign, best, updatedAt }
     const USERS = "users";
     const SCORES = "scores";
 
-    // UI
+    // --------------------------
+    // UI Elements
+    // --------------------------
     const ignInput = document.getElementById("ignInput");
     const authStatus = document.getElementById("authStatus");
     const signInBtn = document.getElementById("signInBtn");
@@ -312,12 +339,13 @@
     const leftBtn = document.getElementById("leftBtn");
     const rightBtn = document.getElementById("rightBtn");
 
-    // Leaderboard
-    const top100Query = query(
-      collection(db, SCORES),
-      orderBy("best", "desc"),
-      limit(100)
-    );
+    // --------------------------
+    // Helpers
+    // --------------------------
+    function cleanIgn(raw) {
+      const s = (raw || "").trim().slice(0, 16);
+      return s.replace(/[^\w\- ]/g, "");
+    }
 
     function renderLeaderboard(rows) {
       lbListEl.innerHTML = "";
@@ -351,29 +379,43 @@
       });
     }
 
+    // --------------------------
+    // Leaderboard (Global Top 100)
+    // NOTE: requires Firestore composite index if you add extra orderBy.
+    // We'll keep it simple: order by best desc, limit 100.
+    // --------------------------
+    const top100Query = query(
+      collection(db, SCORES),
+      orderBy("best", "desc"),
+      limit(100)
+    );
+
     onSnapshot(top100Query, (snap) => {
-      renderLeaderboard(snap.docs.map(d => d.data()));
+      const rows = snap.docs.map(d => d.data());
+      renderLeaderboard(rows);
     }, (err) => {
       console.error("Leaderboard onSnapshot error:", err);
       lbListEl.innerHTML = `<div class="lbEmpty">Leaderboard error. Check console.</div>`;
     });
 
-    // Auth + IGN
+    // --------------------------
+    // Auth + IGN Profile
+    // --------------------------
     let currentUser = null;
     let currentIgn = "";
 
-    function cleanIgn(raw) {
-      const s = (raw || "").trim().slice(0, 16);
-      return s.replace(/[^\w\- ]/g, "");
-    }
-
     async function ensureUserProfile(uid, ign) {
-      await setDoc(doc(db, USERS, uid), { uid, ign, updatedAt: serverTimestamp() }, { merge: true });
+      await setDoc(doc(db, USERS, uid), {
+        uid,
+        ign,
+        updatedAt: serverTimestamp()
+      }, { merge: true });
     }
 
     async function loadUserIgn(uid) {
       const snap = await getDoc(doc(db, USERS, uid));
-      return snap.exists() ? (snap.data().ign || "") : "";
+      if (!snap.exists()) return "";
+      return snap.data().ign || "";
     }
 
     async function signInFlow() {
@@ -386,19 +428,26 @@
       await signInWithPopup(auth, provider);
     }
 
+    async function signOutFlow() {
+      await signOut(auth);
+    }
+
     signInBtn.addEventListener("click", () => signInFlow().catch((e) => {
       console.error("Sign-in error:", e);
       alert("Sign-in failed. Open console (F12) for details.");
     }));
 
-    signOutBtn.addEventListener("click", () => signOut(auth).catch(console.error));
+    signOutBtn.addEventListener("click", () => signOutFlow().catch((e) => {
+      console.error("Sign-out error:", e);
+      alert("Sign-out failed. Check console.");
+    }));
 
     function setSignedOutUI() {
       authStatus.textContent = "Not signed in";
       signInBtn.style.display = "";
       signOutBtn.style.display = "none";
       startBtn.disabled = true;
-      pauseBtn.disabled = true encourages additional content? Actually not.
+      pauseBtn.disabled = true;
       currentIgn = "";
     }
 
@@ -413,6 +462,7 @@
 
     onAuthStateChanged(auth, async (user) => {
       currentUser = user || null;
+
       if (!currentUser) {
         setSignedOutUI();
         return;
@@ -421,13 +471,14 @@
       const typedIgn = cleanIgn(ignInput.value);
       const existingIgn = await loadUserIgn(currentUser.uid);
       const ignToUse = typedIgn || existingIgn || "Player";
+
       ignInput.value = ignToUse;
 
+      // Save profile
       await ensureUserProfile(currentUser.uid, ignToUse);
 
-      // ✅ IMPORTANT FIX:
-      // Do NOT set best: 0 here (that resets old scores).
-      // Just ensure the doc exists and keep IGN synced.
+      // IMPORTANT: Do NOT set best: 0 here (that can look like a reset).
+      // Only ensure uid + ign exist on score doc.
       await setDoc(doc(db, SCORES, currentUser.uid), {
         uid: currentUser.uid,
         ign: ignToUse
@@ -436,7 +487,9 @@
       setSignedInUI(ignToUse);
     });
 
+    // --------------------------
     // Snake Game
+    // --------------------------
     const canvas = document.getElementById("game");
     const ctx = canvas.getContext("2d");
 
@@ -459,6 +512,7 @@
 
     let lastTime = 0;
     let acc = 0;
+
     const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
 
     function speedName(tps) {
@@ -468,6 +522,7 @@
       return "Insane";
     }
 
+    // local best (still useful)
     function loadLocalBest() {
       const v = localStorage.getItem("snake_best_local");
       bestLocal = v ? Number(v) : 0;
@@ -479,7 +534,11 @@
     }
 
     function resetGame() {
-      snake = [{ x: 12, y: 12 }, { x: 11, y: 12 }, { x: 10, y: 12 }];
+      snake = [
+        { x: 12, y: 12 },
+        { x: 11, y: 12 },
+        { x: 10, y: 12 }
+      ];
       dir = { x: 1, y: 0 };
       nextDir = { x: 1, y: 0 };
       score = 0;
@@ -527,27 +586,36 @@
         return;
       }
 
+      // keep IGN synced
       ensureUserProfile(currentUser.uid, ign).catch(() => {});
-      setDoc(doc(db, SCORES, currentUser.uid), { uid: currentUser.uid, ign }, { merge: true }).catch(() => {});
+      setDoc(doc(db, SCORES, currentUser.uid), {
+        uid: currentUser.uid,
+        ign
+      }, { merge: true }).catch(() => {});
 
       resetGame();
       beginLoop();
     }
 
+    // ✅ Arrow/WASD should start + move when idle (but NOT after game over)
     function startFromIdle() {
       if (running || paused || gameOverState) return;
       if (!currentUser) return;
       beginLoop();
-      tick();
+      tick(); // instant first move
     }
 
     function togglePause() {
       if (!running || gameOverState) return;
       paused = !paused;
       pauseBtn.textContent = paused ? "Resume" : "Pause";
+      if (!paused) {
+        // prevent huge dt jump after resume
+        lastTime = performance.now();
+        acc = 0;
+      }
     }
 
-    // ✅ IMPORTANT FIX: do not update best unless higher
     async function submitScoreIfHigher(finalScore) {
       if (!currentUser) return;
 
@@ -556,10 +624,9 @@
 
       await runTransaction(db, async (tx) => {
         const snap = await tx.get(scoreRef);
-        const data = snap.exists() ? snap.data() : null;
-        const prev = (data && Number.isFinite(data.best)) ? data.best : -1;
+        const prev = snap.exists() ? (snap.data().best ?? 0) : 0;
 
-        if (!snap.exists() || finalScore > prev) {
+        if (finalScore > prev) {
           tx.set(scoreRef, {
             uid: currentUser.uid,
             ign,
@@ -567,8 +634,12 @@
             updatedAt: serverTimestamp()
           }, { merge: true });
         } else {
-          // keep ign synced, but do NOT touch best or updatedAt
-          tx.set(scoreRef, { ign }, { merge: true });
+          // keep IGN updated, but DO NOT overwrite best
+          tx.set(scoreRef, {
+            uid: currentUser.uid,
+            ign,
+            updatedAt: serverTimestamp()
+          }, { merge: true });
         }
       });
     }
@@ -583,6 +654,7 @@
         saveLocalBest();
       }
 
+      // Save score globally (only if higher)
       submitScoreIfHigher(score).catch((e) => console.error("submitScoreIfHigher error:", e));
 
       draw();
@@ -598,7 +670,10 @@
     }
 
     function setDirection(nx, ny) {
+      // ✅ After game over: ignore movement keys; only Start can restart.
       if (gameOverState) return;
+
+      // Prevent reversing into itself
       if (nx === -dir.x && ny === -dir.y) return;
       nextDir = { x: nx, y: ny };
     }
@@ -623,6 +698,7 @@
 
       const newHead = { x: nx, y: ny };
 
+      // Collision with body
       for (let i = 0; i < snake.length; i++) {
         if (snake[i].x === newHead.x && snake[i].y === newHead.y) {
           gameOver();
@@ -632,6 +708,7 @@
 
       snake.unshift(newHead);
 
+      // Eat food?
       if (newHead.x === food.x && newHead.y === food.y) {
         score += 1;
         scoreEl.textContent = score;
@@ -660,11 +737,13 @@
     function draw() {
       drawGrid();
 
+      // Food
       ctx.fillStyle = FOOD;
       ctx.beginPath();
       ctx.roundRect(food.x * CELL + 4, food.y * CELL + 4, CELL - 8, CELL - 8, 8);
       ctx.fill();
 
+      // Snake
       for (let i = snake.length - 1; i >= 0; i--) {
         const p = snake[i];
         ctx.fillStyle = (i === 0) ? SNAKE_HEAD : SNAKE;
@@ -673,6 +752,7 @@
         ctx.fill();
       }
 
+      // Paused overlay
       if (running && paused) {
         ctx.fillStyle = "rgba(0,0,0,0.45)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -681,6 +761,9 @@
         ctx.textAlign = "center";
         ctx.fillText("Paused", canvas.width / 2, canvas.height / 2);
       }
+
+      // Speed label
+      speedLabelEl.textContent = speedName(ticksPerSecond);
     }
 
     function loop(t) {
@@ -699,11 +782,17 @@
       requestAnimationFrame(loop);
     }
 
+    // --------------------------
+    // Events
+    // --------------------------
     document.addEventListener("keydown", (e) => {
       const k = e.key.toLowerCase();
+
+      // Must be signed in to play (as requested)
       if (!currentUser) return;
 
       if (gameOverState) {
+        // Only allow reset (R) while game over; restart only via Start button.
         if (k === "r") resetGame();
         return;
       }
@@ -729,6 +818,7 @@
       wallsOn = wallsSel.value === "1";
     });
 
+    // D-pad (also starts from idle; not after game over)
     const tap = (btn, dx, dy) => {
       btn.addEventListener("click", () => {
         if (!currentUser) return;
@@ -742,6 +832,7 @@
     tap(leftBtn, -1, 0);
     tap(rightBtn, 1, 0);
 
+    // roundRect fallback (older browsers)
     if (!CanvasRenderingContext2D.prototype.roundRect) {
       CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
         r = Math.min(r, w / 2, h / 2);
@@ -763,3 +854,4 @@
   </script>
 </body>
 </html>
+
