@@ -701,7 +701,7 @@ async function mpResolveIncomingMove(moveId, mv){
   if(!FB) return;
 
   // mv.by fired at mv.cell onto MY board
-  const myBoard = state.boards[mp.slot];
+  const myBoard = state.boards[0]; // ALWAYS my local board
   const i = mv.cell;
 
   // already resolved locally? (avoid double writes if reload)
@@ -752,8 +752,7 @@ function mpApplyMoveResult(rr){
 
   if(attacker === mp.slot){
     // I fired -> mark on opponent board (virtual board = slot 1-mp.slot)
-    const oppSlot = 1 - mp.slot;
-    const oppBoard = state.boards[oppSlot];
+    const oppBoard = state.boards[1]; // ALWAYS opponent board locally
 
     // we don't know ships, but shots are safe
     if(oppBoard.shots[i] === 0){
@@ -861,6 +860,10 @@ async function mpSetWinner(winnerSlot){
   function rc(i){ return [Math.floor(i/SIZE), i%SIZE]; }
   function inBounds(r,c){ return r>=0 && r<SIZE && c>=0 && c<SIZE; }
 
+  function isPvP(){
+  return state.mode === "pvp" || state.mode === "pvp_online";
+  }
+
   // Drag placement
   let drag = { active:false, start:null };
 
@@ -939,8 +942,8 @@ async function mpSetWinner(winnerSlot){
   function renderBoards(){
     const p = state.turn;
 
-    const your = (state.mode === "pvp" && state.phase === "battle") ? state.boards[p] : state.boards[0];
-    const enemy = (state.mode === "pvp" && state.phase === "battle") ? state.boards[1-p] : state.boards[1];
+    const your  = (isPvP() && state.phase === "battle") ? state.boards[p]   : state.boards[0];
+    const enemy = (isPvP() && state.phase === "battle") ? state.boards[1-p] : state.boards[1];
 
     // Your board: show your ships
     for(let r=0;r<SIZE;r++){
@@ -1165,11 +1168,12 @@ async function mpSetWinner(winnerSlot){
 
     if(board.ships.length === SHIPS.length){
       toastLeft.textContent = "All ships placed! Click Start Battle.";
-    }
-    maybeSavePlacementOnline(placingPlayer);
-    else {
+    } else {
       toastLeft.textContent = `Placed ${ship.name}. Next: ${SHIPS[board.ships.length].name}`;
     }
+
+    // ✅ after the if/else (safe)
+    maybeSavePlacementOnline(placingPlayer);
 
     renderAll(false);
   }
@@ -1192,10 +1196,16 @@ async function mpSetWinner(winnerSlot){
     sClick();
     clearPreview(yourGridEl);
 
-    if(board.ships.length === SHIPS.length) toastLeft.textContent = "All ships placed! Click Start Battle.";
     const placingPlayer = (state.phase === "place_p2") ? 1 : 0;
+
+    if(board.ships.length === SHIPS.length){
+      toastLeft.textContent = "All ships placed! Click Start Battle.";
+    } else {
+      toastLeft.textContent = `Placed ${ship.name}. Next: ${SHIPS[board.ships.length].name}`;
+    }
+
     maybeSavePlacementOnline(placingPlayer);
-    else toastLeft.textContent = `Placed ${ship.name}. Next: ${SHIPS[board.ships.length].name}`;
+
     renderAll(false);
   }
 
@@ -1272,9 +1282,9 @@ async function mpSetWinner(winnerSlot){
     if(state.phase !== "battle") return;
     
     // ONLINE PvP: submit move, let Firebase results drive the UI
-    if(mp.enabled){
-      mpSubmitMove(idx(r,c));
-      return;
+    if(mp.enabled && state.mode === "pvp_online"){
+    mpSubmitMove(idx(r,c));
+    return;
   }
     
     const attacker = state.turn;
