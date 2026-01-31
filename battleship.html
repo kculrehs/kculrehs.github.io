@@ -531,6 +531,7 @@
       });
 
       mp.unsub = unsub;
+      mpListenMovesAndResults();
     }
 
     // ---------------- Apply remote state ----------------
@@ -600,6 +601,170 @@
         mpSavePlacementIfOnline(board);
       }
     }
+    let mpMovesUnsub = null;
+let mpResultsUnsub = null;
+let seenMoves = new Set();
+let seenResults = new Set();
+
+function mpSyncLocalModeFromRoom(r){
+  // force online mode when in a room
+  state.mode = "pvp_online";
+  diffSel.disabled = true;
+  enemyTitle.textContent = "Opponent Board";
+}
+
+async function mpSubmitMove(cellIndex){
+  if(!mp.enabled || !mp.roomId || !window.RSFB) return;
+  const FB = window.RSFB;
+
+  // only submit if battle + your turn
+  const phase = mp.remote?.public?.phase;
+  const turn = mp.remote?.public?.turn;
+  if(phase !== "battle") return;
+  if(turn !== mp.slot) { toastLeft.textContent = "Not your turn."; return; }
+
+  const moveRef = FB.push(FB.ref(FB.db, `rooms/${mp.roomId}/moves`));
+  await FB.set(moveRef, {
+    by: mp.slot,
+    cell: cellIndex,
+    at: Date.now()
+  });
+}
+
+function mpListenMovesAndResults(){
+  const FB = window.RSFB;
+  if(!FB || !mp.roomId) return;
+
+  // MOVES (target resolves)
+  const movesRef = FB.ref(FB.db, `rooms/${mp.roomId}/moves`);
+  if(mpMovesUnsub) mpMovesUnsub();
+
+  mpMovesUnsub = FB.onValue(movesRef, (snap) => {
+    const data = snap.val();
+    if(!data) return;
+
+    for(const [moveId, mv] of Object.entries(data)){
+      if(seenMoves.has(moveId)) continue;
+      seenMoves.add(moveId);
+
+      // target slot is opposite of attacker
+      const targetSlot = 1 - mv.by;
+
+      // only the TARGET resolves (only they can "see" their ships)
+      if(targetSlot !== mp.slot) continue;
+
+      mpResolveIncomingMove(moveId, mv);
+    }
+  });
+
+  // RESULTS (both apply)
+  const resRef = FB.ref(FB.db, `rooms/${mp.roomId}/moveResults`);
+  if(mpResultsUnsub) mpResultsUnsub();
+
+  mpResultsUnsub = FB.onValue(resRef, (snap) => {
+    const data = snap.val();
+    if(!data) return;
+
+    for(const [rid, rr] of Object.entries(data)){
+      if(seenResults.has(rid)) continue;
+      seenResults.add(rid);
+      mpApplyMoveResult(rr);
+    }
+  });
+}
+
+async function mpResolveIncomingMove(moveId, mv){
+  const FB = window.RSFB;
+  if(!FB) return;
+
+  // mv.by fired at mv.cell onto MY board
+  const myBoard = state.boards[mp.slot];
+  const i = mv.cell;
+
+  // already resolved locally? (avoid double writes if reload)
+  if(myBoard.shots[i] !== 0) return;
+
+  // compute hit/miss on my board
+  const res = fireAt(myBoard, i);
+
+  // write result for everyone
+  await FB.set(FB.ref(FB.db, `rooms/${mp.roomId}/moveResults/${moveId}`), {
+    by: mv.by,
+    target: mp.slot,
+    cell: i,
+    at: mv.at ?? Date.now(),
+    hit: !!res.hit,
+    sunk: !!res.sunk,
+    shipName: res.shipName || null,
+    resolvedAt: Date.now()
+  });
+
+  // advance turn (shoot-again rule)
+  const shootAgainOnHit = !!mp.remote?.public?.shootAgainOnHit;
+  const keepTurn = (shootAgainOnHit && res.hit);
+  const nextTurn = keepTurn ? mv.by : (1 - mv.by);
+
+  // check for winner (attacker wins if all my ships are sunk)
+  if(allSunk(myBoard)){
+    await mpSetWinner(mv.by);
+    return;
+  }
+
+  await FB.update(
+    FB.ref(FB.db, `rooms/${mp.roomId}/public`),
+    { turn: nextTurn }
+  );
+
+  renderAll(false);
+}
+
+function mpApplyMoveResult(rr){
+  // Update local UI based on result.
+  // If I fired it -> apply to opponent board shots
+  // If opponent fired -> my board already updated when resolved, but we can still toast.
+
+  const attacker = rr.by;
+  const target = rr.target;
+  const i = rr.cell;
+
+  if(attacker === mp.slot){
+    // I fired -> mark on opponent board (virtual board = slot 1-mp.slot)
+    const oppSlot = 1 - mp.slot;
+    const oppBoard = state.boards[oppSlot];
+
+    // we don't know ships, but shots are safe
+    if(oppBoard.shots[i] === 0){
+      oppBoard.shots[i] = rr.hit ? 2 : 1;
+    }
+
+    if(rr.hit){
+      sHit(); if(rr.sunk) sSunk();
+      toastLeft.textContent = rr.sunk ? `Hit! Sunk ${rr.shipName}.` : "Hit!";
+    } else {
+      sMiss();
+      toastLeft.textContent = "Miss.";
+    }
+  } else if(target === mp.slot){
+    // opponent fired at me (my board was updated in resolver)
+    if(rr.hit){
+      sHit(); if(rr.sunk) sSunk();
+      toastLeft.textContent = rr.sunk ? `They hit and sunk your ${rr.shipName}!` : "They hit your ship!";
+    } else {
+      sMiss();
+      toastLeft.textContent = "They missed.";
+    }
+  }
+
+  renderAll(false);
+}
+
+async function mpSetWinner(winnerSlot){
+  if(!mp.enabled || !mp.roomId || !window.RSFB) return;
+  await window.RSFB.update(
+    window.RSFB.ref(window.RSFB.db, `rooms/${mp.roomId}/public`),
+    { phase: "over", winner: winnerSlot }
+  );
+}
 
   // ---------- Tiny Sound Engine ----------
   let audioCtx = null;
