@@ -217,7 +217,7 @@
       const FOOD = "#ef4444";
 
       // State
-      let snake, dir, nextDir, food, score, best, running, paused;
+      let snake, dir, nextDir, food, score, best, running, paused, gameOverState;
       let ticksPerSecond = Number(speedSel.value);
       let wallsOn = wallsSel.value === "1";
 
@@ -243,7 +243,7 @@
         bestEl.textContent = best;
       }
 
-      function resetGame() {
+       function resetGame() {
         snake = [
           { x: 12, y: 12 },
           { x: 11, y: 12 },
@@ -253,6 +253,9 @@
         nextDir = { x: 1, y: 0 };
         score = 0;
         scoreEl.textContent = score;
+
+        gameOverState = false;   // ✅ ADD THIS
+
         placeFood();
         paused = false;
         running = false;
@@ -273,6 +276,7 @@
       }
 
       function start() {
+        if (gameOverState) resetGame();
         if (!running) {
           running = true;
           paused = false;
@@ -294,6 +298,7 @@
       function gameOver() {
         running = false;
         paused = false;
+        gameOverState = true;
         if (score > best) {
           best = score;
           saveBest();
@@ -312,6 +317,7 @@
       }
 
       function setDirection(nx, ny) {
+        if (gameOverState) return;
         // Prevent reversing into itself
         if (nx === -dir.x && ny === -dir.y) return;
         nextDir = { x: nx, y: ny };
@@ -497,3 +503,4 @@
   </script>
 </body>
 </html>
+
