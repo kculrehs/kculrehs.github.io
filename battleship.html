@@ -940,7 +940,8 @@ async function mpSetWinner(winnerSlot){
   }
 
   function renderBoards(){
-    const p = state.turn;
+    const isOnline = mp.enabled && state.mode === "pvp_online";
+    const p = isOnline ? mp.slot : state.turn;
 
     const your  = (isPvP() && state.phase === "battle") ? state.boards[p]   : state.boards[0];
     const enemy = (isPvP() && state.phase === "battle") ? state.boards[1-p] : state.boards[1];
@@ -1282,10 +1283,10 @@ async function mpSetWinner(winnerSlot){
     if(state.phase !== "battle") return;
     
     // ONLINE PvP: submit move, let Firebase results drive the UI
-    if(mp.enabled && state.mode === "pvp_online"){
-    mpSubmitMove(idx(r,c));
-    return;
-  }
+    if(mp.enabled && isPvP()){
+      mpSubmitMove(idx(r,c));
+      return;
+    }
     
     const attacker = state.turn;
 
