@@ -268,16 +268,16 @@
 
   <script type="module">
     // --------------------------
-    // Firebase (Auth + Firestore)
+    // Firebase (Auth + Firestore) - v10.12.5 (stable on CDN)
     // --------------------------
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-app.js";
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
     import {
       getAuth,
       GoogleAuthProvider,
       signInWithPopup,
       signOut,
       onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-auth.js";
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
     import {
       getFirestore,
       doc,
@@ -288,10 +288,11 @@
       query,
       orderBy,
       limit,
-      onSnapshot
-    } from "https://www.gstatic.com/firebasejs/12.8.0/firebase-firestore.js";
+      onSnapshot,
+      serverTimestamp
+    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-    // ✅ Replace this with your Firebase config from Firebase Console
+    // ✅ Your Firebase config
     const firebaseConfig = {
       apiKey: "AIzaSyCC1hxWanBV88i_-uKFX3X639c2srv1FR0",
       authDomain: "redsun-snake-leaderboard.firebaseapp.com",
@@ -307,9 +308,6 @@
     const db = getFirestore(app);
     const provider = new GoogleAuthProvider();
 
-    // Collections:
-    // users/{uid} -> { ign, uid, updatedAt }
-    // scores/{uid} -> { uid, ign, best, updatedAt }
     const USERS = "users";
     const SCORES = "scores";
 
@@ -376,10 +374,12 @@
       });
     }
 
-    // Live updates
     onSnapshot(top100Query, (snap) => {
       const rows = snap.docs.map(d => d.data());
       renderLeaderboard(rows);
+    }, (err) => {
+      console.error("Leaderboard onSnapshot error:", err);
+      lbListEl.innerHTML = `<div class="lbEmpty">Leaderboard error. Check console.</div>`;
     });
 
     // --------------------------
@@ -390,13 +390,12 @@
 
     function cleanIgn(raw) {
       const s = (raw || "").trim().slice(0, 16);
-      // allow letters/numbers/_- and spaces; remove weird chars
       return s.replace(/[^\w\- ]/g, "");
     }
 
     async function ensureUserProfile(uid, ign) {
       const userRef = doc(db, USERS, uid);
-      await setDoc(userRef, { uid, ign, updatedAt: Date.now() }, { merge: true });
+      await setDoc(userRef, { uid, ign, updatedAt: serverTimestamp() }, { merge: true });
     }
 
     async function loadUserIgn(uid) {
@@ -413,19 +412,19 @@
         ignInput.focus();
         return;
       }
-
       await signInWithPopup(auth, provider);
-
-      // after auth state updates, we save IGN to profile
-      // (see onAuthStateChanged)
     }
 
     async function signOutFlow() {
       await signOut(auth);
     }
 
-    signInBtn.addEventListener("click", signInFlow);
-    signOutBtn.addEventListener("click", signOutFlow);
+    signInBtn.addEventListener("click", () => signInFlow().catch((e) => {
+      console.error("Sign-in error:", e);
+      alert("Sign-in failed. Open console (F12) for details.");
+    }));
+
+    signOutBtn.addEventListener("click", () => signOutFlow().catch(console.error));
 
     function setSignedOutUI() {
       authStatus.textContent = "Not signed in";
@@ -436,7 +435,7 @@
       currentIgn = "";
     }
 
-    function setSignedInUI(user, ign) {
+    function setSignedInUI(ign) {
       authStatus.textContent = `Signed in: ${ign}`;
       signInBtn.style.display = "none";
       signOutBtn.style.display = "";
@@ -453,21 +452,23 @@
         return;
       }
 
-      // Use the typed IGN (required) if present; otherwise load existing profile
       const typedIgn = cleanIgn(ignInput.value);
       const existingIgn = await loadUserIgn(currentUser.uid);
       const ignToUse = typedIgn || existingIgn || "Player";
 
       ignInput.value = ignToUse;
+
       await ensureUserProfile(currentUser.uid, ignToUse);
 
-      // Also ensure score doc always has latest IGN (best score updates are separate)
+      // Ensure score doc exists (for leaderboard display even before first score)
       await setDoc(doc(db, SCORES, currentUser.uid), {
         uid: currentUser.uid,
-        ign: ignToUse
+        ign: ignToUse,
+        best: 0,
+        updatedAt: serverTimestamp()
       }, { merge: true });
 
-      setSignedInUI(currentUser, ignToUse);
+      setSignedInUI(ignToUse);
     });
 
     // --------------------------
@@ -504,7 +505,6 @@
       return "Insane";
     }
 
-    // local best (still helpful)
     function loadLocalBest() {
       const v = localStorage.getItem("snake_best_local");
       bestLocal = v ? Number(v) : 0;
@@ -556,35 +556,31 @@
       requestAnimationFrame(loop);
     }
 
-    // Start button: always starts a fresh run (only if signed in)
-    function startNewGame() {
+    async function startNewGame() {
       if (!currentUser) {
         alert("Sign in with your IGN first.");
         return;
       }
-      // keep IGN synced to profile
       const ign = cleanIgn(ignInput.value);
       if (!ign) {
         alert("Enter your IGN first.");
         ignInput.focus();
         return;
       }
-      // update profile ign
+
+      // keep ign synced
       ensureUserProfile(currentUser.uid, ign).catch(() => {});
-      setDoc(doc(db, SCORES, currentUser.uid), { uid: currentUser.uid, ign }, { merge: true }).catch(() => {});
+      setDoc(doc(db, SCORES, currentUser.uid), { uid: currentUser.uid, ign, updatedAt: serverTimestamp() }, { merge: true }).catch(() => {});
 
       resetGame();
       beginLoop();
-      // optional: first step immediately feels better
-      // tick();
     }
 
-    // Arrow key starts when idle (not running) BUT only if signed in and NOT after game over
     function startFromIdle() {
       if (running || paused || gameOverState) return;
-      if (!currentUser) return; // must be signed in
+      if (!currentUser) return;
       beginLoop();
-      tick(); // instant move
+      tick();
     }
 
     function togglePause() {
@@ -603,26 +599,15 @@
         const snap = await tx.get(scoreRef);
         const prev = snap.exists() ? (snap.data().best ?? 0) : 0;
 
-        if (!snap.exists()) {
-          tx.set(scoreRef, {
-            uid: currentUser.uid,
-            ign,
-            best: finalScore,
-            updatedAt: Date.now()
-          }, { merge: true });
-          return;
-        }
-
         if (finalScore > prev) {
           tx.set(scoreRef, {
             uid: currentUser.uid,
             ign,
             best: finalScore,
-            updatedAt: Date.now()
+            updatedAt: serverTimestamp()
           }, { merge: true });
         } else {
-          // still keep IGN updated (optional)
-          tx.set(scoreRef, { ign, updatedAt: Date.now() }, { merge: true });
+          tx.set(scoreRef, { ign, updatedAt: serverTimestamp() }, { merge: true });
         }
       });
     }
@@ -637,10 +622,8 @@
         saveLocalBest();
       }
 
-      // Global leaderboard submit (only best is stored)
-      submitScoreIfHigher(score).catch(() => {});
+      submitScoreIfHigher(score).catch((e) => console.error("submitScoreIfHigher error:", e));
 
-      // overlay
       draw();
       ctx.fillStyle = "rgba(0,0,0,0.55)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -654,7 +637,7 @@
     }
 
     function setDirection(nx, ny) {
-      if (gameOverState) return; // only Start can restart after game over
+      if (gameOverState) return;
       if (nx === -dir.x && ny === -dir.y) return;
       nextDir = { x: nx, y: ny };
     }
@@ -716,13 +699,11 @@
     function draw() {
       drawGrid();
 
-      // Food
       ctx.fillStyle = FOOD;
       ctx.beginPath();
       ctx.roundRect(food.x * CELL + 4, food.y * CELL + 4, CELL - 8, CELL - 8, 8);
       ctx.fill();
 
-      // Snake
       for (let i = snake.length - 1; i >= 0; i--) {
         const p = snake[i];
         ctx.fillStyle = (i === 0) ? SNAKE_HEAD : SNAKE;
@@ -757,11 +738,8 @@
       requestAnimationFrame(loop);
     }
 
-    // Keyboard
     document.addEventListener("keydown", (e) => {
       const k = e.key.toLowerCase();
-
-      // Must be signed in to play
       if (!currentUser) return;
 
       if (gameOverState) {
@@ -777,8 +755,7 @@
       else if (k === "r") resetGame();
     });
 
-    // Buttons
-    startBtn.addEventListener("click", startNewGame);
+    startBtn.addEventListener("click", () => startNewGame().catch(console.error));
     pauseBtn.addEventListener("click", togglePause);
     resetBtn.addEventListener("click", resetGame);
 
@@ -791,7 +768,6 @@
       wallsOn = wallsSel.value === "1";
     });
 
-    // D-pad (also starts from idle, but only if signed in)
     const tap = (btn, dx, dy) => {
       btn.addEventListener("click", () => {
         if (!currentUser) return;
@@ -805,7 +781,6 @@
     tap(leftBtn, -1, 0);
     tap(rightBtn, 1, 0);
 
-    // roundRect fallback
     if (!CanvasRenderingContext2D.prototype.roundRect) {
       CanvasRenderingContext2D.prototype.roundRect = function(x, y, w, h, r) {
         r = Math.min(r, w / 2, h / 2);
@@ -827,4 +802,3 @@
   </script>
 </body>
 </html>
-
