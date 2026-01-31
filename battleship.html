@@ -1357,7 +1357,17 @@
 
   modeSel.addEventListener("change", resetGame);
   diffSel.addEventListener("change", () => state.difficulty = diffSel.value);
-  shootAgainChk.addEventListener("change", () => state.shootAgain = shootAgainChk.checked);
+  shootAgainChk.addEventListener("change", async () => {
+    state.shootAgain = shootAgainChk.checked;
+
+    // online sync
+    if(mp.enabled && mp.roomId && window.RSFB){
+      await window.RSFB.update(
+        window.RSFB.ref(window.RSFB.db, `rooms/${mp.roomId}/public`),
+        { shootAgainOnHit: state.shootAgain }
+      );
+    }
+  });
 
   btnRandom.addEventListener("click", () => {
     if(state.phase === "place_p1"){
