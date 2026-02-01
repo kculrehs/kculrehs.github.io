@@ -175,7 +175,8 @@
 
             <div class="hint">
               Controls:<br>
-              <span class="kbd">←</span>/<span class="kbd">→</span> move • <span class="kbd">↓</span> soft drop • <span class="kbd">Space</span> hard drop<br>
+              <span class="kbd">←</span>/<span class="kbd">→</span> move (hold to slide faster as level rises) •
+              <span class="kbd">↓</span> soft drop (hold) • <span class="kbd">Space</span> hard drop<br>
               <span class="kbd">Z</span>/<span class="kbd">↑</span> rotate • <span class="kbd">C</span> hold (optional) • <span class="kbd">P</span> pause
             </div>
 
@@ -195,7 +196,7 @@
             </div>
 
             <div class="hint" style="margin-top:10px;">
-              Tip: Clear lines to level up. Speed increases each level.
+              Tip: Clear lines to level up. Drop speed and movement speed increase each level.
             </div>
           </div>
 
@@ -248,6 +249,7 @@
 
             <div class="hint" style="margin-top:10px;">
               Note: You must be signed in and have an IGN to appear on the leaderboard.
+              Only the top 100 scores are displayed.
             </div>
           </div>
         </div>
@@ -270,13 +272,12 @@
 
   // 1) PASTE YOUR FIREBASE CONFIG HERE
   const firebaseConfig = {
-    apiKey: "AIzaSyAkU723oSI_4wMmGtkGyuFgPOfHLnlP3cE",
-    authDomain: "redsun-tetris-leaderboard.firebaseapp.com",
-    projectId: "redsun-tetris-leaderboard",
-    storageBucket: "redsun-tetris-leaderboard.firebasestorage.app",
-    messagingSenderId: "857413426937",
-    appId: "1:857413426937:web:db155393fa7efe828a8c28",
-    measurementId: "G-YQF0ZSS7NL"
+    apiKey: "PASTE_API_KEY",
+    authDomain: "PASTE_AUTH_DOMAIN",
+    projectId: "PASTE_PROJECT_ID",
+    storageBucket: "PASTE_STORAGE_BUCKET",
+    messagingSenderId: "PASTE_SENDER_ID",
+    appId: "PASTE_APP_ID",
   };
 
   // If config is not filled, we keep the game working but disable leaderboard.
@@ -309,7 +310,6 @@
   let lastGameOver = false;
 
   function sanitizeIGN(s){
-    // Keep it simple + safe: letters/numbers/space/_- only, trimmed, 2..18
     const cleaned = (s || "").trim().replace(/[^\w \-]/g, "").replace(/\s+/g, " ");
     if (cleaned.length < 2) return "";
     return cleaned.slice(0, 18);
@@ -351,7 +351,7 @@
       return;
     }
     submitScoreBtn.disabled = false;
-    submitHint.textContent = `Ready to submit: ${lastGameScore}`;
+    submitHint.textContent = `Game over! Ready to submit: ${lastGameScore}`;
   }
 
   async function ensureUserDoc(uid, payload){
@@ -393,6 +393,10 @@
     whoami.textContent = `Signed in as ${currentIGN || "(no IGN yet)"}${email}`;
   }
 
+  // Top-100-only behavior:
+  // - We let anyone submit their personal best.
+  // - The UI only displays top 100 (Firestore query limit(100)).
+  // - If your score isn't in top 100, it simply won't appear.
   async function submitScore(score){
     if (!firebaseReady) return alert("Firebase not configured yet.");
     if (!currentUser) return alert("Please sign in first.");
@@ -414,7 +418,7 @@
       updatedAt: serverTimestamp()
     }, { merge: true });
 
-    alert("Score submitted! 🎉");
+    alert("Score submitted! If it’s in the Top 100, it will show up.");
   }
 
   async function loadMyIGN(){
@@ -508,7 +512,6 @@
 
     submitScoreBtn.addEventListener("click", async () => {
       await submitScore(lastGameScore);
-      // after submit, keep button enabled only if you beat it again later
       updateSubmitUI();
     });
 
@@ -516,10 +519,9 @@
   }
 
   // ---------------------------
-  // TETRIS GAME (your original)
+  // TETRIS GAME
   // ---------------------------
   (() => {
-    // Board: 10x20 visible, plus 2 hidden rows for spawn
     const COLS = 10;
     const ROWS = 20;
     const HIDDEN = 2;
@@ -547,7 +549,7 @@
     const dropBtn = document.getElementById("dropBtn");
     const pauseBtn2 = document.getElementById("pauseBtn");
 
-    // Fit board canvas to 10x20 at nice resolution
+    // Fit board canvas to 10x20
     const W = COLS * 36;
     const H = ROWS * 36;
     boardCanvas.width = W;
@@ -561,7 +563,7 @@
       Z: "#f87171",
       J: "#3b82f6",
       L: "#fb923c",
-      G: "#0b1220" // background
+      G: "#0b1220"
     };
 
     const SHAPES = {
@@ -610,6 +612,13 @@
     let lastTime = 0;
     let speedMult = Number(speedSel.value);
 
+    // Movement auto-repeat (DAS/ARR) — speeds up with level
+    let keyLeft = false, keyRight = false, keyDown = false;
+    let moveDir = 0;     // -1 left, +1 right
+    let dasTimer = 0;
+    let arrTimer = 0;
+    let softDropTimer = 0;
+
     // Utils
     const clone = (m) => m.map(r => r.slice());
     const randBag = () => {
@@ -621,6 +630,20 @@
       return types;
     };
     let bag = randBag();
+
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+    function getDAS(){
+      // delay before repeating starts (sec) — lower = faster
+      return clamp(0.14 - (level - 1) * 0.004, 0.07, 0.14);
+    }
+    function getARR(){
+      // repeat interval (sec) — lower = faster
+      return clamp(0.06 - (level - 1) * 0.002, 0.025, 0.06);
+    }
+    function getSoftDropInterval(){
+      return clamp(0.05 - (level - 1) * 0.0015, 0.018, 0.05);
+    }
 
     function getBest() {
       const v = localStorage.getItem("tetris_best");
@@ -634,17 +657,14 @@
 
     function emptyGrid() {
       const g = [];
-      for (let r = 0; r < ROWS + HIDDEN; r++) {
-        g.push(new Array(COLS).fill(null));
-      }
+      for (let r = 0; r < ROWS + HIDDEN; r++) g.push(new Array(COLS).fill(null));
       return g;
     }
 
     function newPiece(type) {
       const shape = clone(SHAPES[type]);
-      // Spawn near top, centered
       const x = ((COLS / 2) | 0) - ((shape[0].length / 2) | 0);
-      const y = -HIDDEN; // hidden rows above visible
+      const y = -HIDDEN;
       return { type, shape, x, y };
     }
 
@@ -664,6 +684,10 @@
       paused = false;
       dropTimer = 0;
       lastTime = performance.now();
+
+      // reset held keys / repeat timers
+      keyLeft = keyRight = keyDown = false;
+      moveDir = 0; dasTimer = 0; arrTimer = 0; softDropTimer = 0;
 
       // leaderboard tracking
       lastGameScore = 0;
@@ -720,12 +744,10 @@
         }
       }
       if (cleared > 0) {
-        // Classic-ish scoring
         const table = [0, 100, 300, 500, 800];
         score += table[cleared] * level;
         lines += cleared;
 
-        // level up every 10 lines
         const newLevel = 1 + Math.floor(lines / 10);
         if (newLevel !== level) level = newLevel;
 
@@ -735,7 +757,6 @@
     }
 
     function rotate(shape) {
-      // Rotate clockwise
       const N = shape.length;
       const M = shape[0].length;
       const out = Array.from({ length: M }, () => new Array(N).fill(0));
@@ -744,11 +765,8 @@
     }
 
     function tryRotate() {
-      const old = current.shape;
-      const rotated = rotate(old);
+      const rotated = rotate(current.shape);
       const test = { ...current, shape: rotated };
-
-      // basic wall-kick attempts
       const kicks = [0, -1, 1, -2, 2];
       for (const k of kicks) {
         const cand = { ...test, x: test.x + k };
@@ -765,7 +783,6 @@
     function hardDrop() {
       let dropped = 0;
       while (move(0, 1)) dropped++;
-      // reward a bit
       score += dropped * 2;
       lock();
     }
@@ -779,26 +796,49 @@
       }
     }
 
+    function isStackOverflow() {
+      for (let r = 0; r < HIDDEN; r++) {
+        for (let c = 0; c < COLS; c++) {
+          if (grid[r][c] !== null) return true;
+        }
+      }
+      return false;
+    }
+
+    function gameOver() {
+      running = false;
+      paused = false;
+
+      // clear held keys so nothing “sticks”
+      keyLeft = keyRight = keyDown = false;
+      moveDir = 0; dasTimer = 0; arrTimer = 0; softDropTimer = 0;
+
+      draw();
+      overlay("Game Over", "Press Start or Reset");
+
+      lastGameScore = score;
+      lastGameOver = true;
+      updateSubmitUI();
+    }
+
     function lock() {
       merge(current);
       clearLines();
       holdUsed = false;
 
+      // game over if stack reaches hidden rows
+      if (isStackOverflow()) {
+        gameOver();
+        return;
+      }
+
       current = next;
       next = newPiece(pullFromBag());
       drawNext();
 
-      // Game over if spawn collides
+      // safety: game over if spawn collides
       if (collide(current)) {
-        running = false;
-        paused = false;
-        draw();
-        overlay("Game Over", "Press Start to play again");
-
-        // leaderboard state
-        lastGameScore = score;
-        lastGameOver = true;
-        updateSubmitUI();
+        gameOver();
       }
     }
 
@@ -818,6 +858,8 @@
         hold = curType;
         current = newPiece(swap);
       }
+      // if hold spawns into collision, end it
+      if (collide(current)) gameOver();
     }
 
     function overlay(title, subtitle) {
@@ -835,18 +877,15 @@
     function drawCell(x, y, color) {
       const s = 36;
       const px = x * s;
-      const py = (y - HIDDEN) * s; // shift hidden rows out
+      const py = (y - HIDDEN) * s;
       if (py < 0) return;
 
-      // block
       ctx.fillStyle = color;
       ctx.fillRect(px + 1, py + 1, s - 2, s - 2);
 
-      // highlight
       ctx.fillStyle = "rgba(255,255,255,0.10)";
       ctx.fillRect(px + 3, py + 3, s - 6, s / 3);
 
-      // shadow
       ctx.fillStyle = "rgba(0,0,0,0.20)";
       ctx.fillRect(px + 3, py + s - 10, s - 6, 7);
     }
@@ -855,7 +894,6 @@
       ctx.fillStyle = COLORS.G;
       ctx.fillRect(0, 0, boardCanvas.width, boardCanvas.height);
 
-      // subtle grid lines
       ctx.strokeStyle = "rgba(255,255,255,0.06)";
       ctx.lineWidth = 1;
       for (let x = 1; x < COLS; x++) {
@@ -873,7 +911,6 @@
     }
 
     function drawGhost() {
-      // show where piece lands
       const ghost = { ...current, shape: current.shape.map(r => r.slice()) };
       while (!collide({ ...ghost, y: ghost.y + 1 })) ghost.y++;
       const { shape, x, y, type } = ghost;
@@ -905,7 +942,6 @@
     function draw() {
       drawGrid();
 
-      // placed blocks
       for (let r = HIDDEN; r < ROWS + HIDDEN; r++) {
         for (let c = 0; c < COLS; c++) {
           const v = grid[r][c];
@@ -913,14 +949,11 @@
         }
       }
 
-      // ghost + current
-      drawGhost();
+      if (running) drawGhost();
       drawPiece(current);
 
-      // paused label
       if (running && paused) overlay("Paused", "Press P or Pause to resume");
 
-      // idle message
       if (!running) {
         ctx.fillStyle = "rgba(255,255,255,0.80)";
         ctx.font = "16px system-ui, sans-serif";
@@ -938,7 +971,6 @@
       const shape = next.shape;
       const type = next.type;
 
-      // center the shape
       const w = shape[0].length;
       const h = shape.length;
       const ox = ((nextCanvas.width / s - w) / 2) | 0;
@@ -962,10 +994,14 @@
         pauseBtn.textContent = "Pause";
         lastTime = performance.now();
 
-        // leaderboard state for a new run
+        // leaderboard state for new run
         lastGameOver = false;
         lastGameScore = 0;
         updateSubmitUI();
+
+        // clear held keys for a clean start
+        keyLeft = keyRight = keyDown = false;
+        moveDir = 0; dasTimer = 0; arrTimer = 0; softDropTimer = 0;
 
         requestAnimationFrame(loop);
       } else if (paused) {
@@ -991,37 +1027,89 @@
         const base = Math.max(0.08, 0.75 - (level - 1) * 0.06);
         const interval = base / speedMult;
 
+        // Horizontal movement auto-repeat (DAS/ARR) — faster per level
+        const wantDir = (keyRight ? 1 : 0) + (keyLeft ? -1 : 0);
+
+        if (wantDir !== 0) {
+          if (wantDir !== moveDir) {
+            moveDir = wantDir;
+            dasTimer = 0;
+            arrTimer = 0;
+            move(moveDir, 0); // immediate first step
+          } else {
+            dasTimer += dt;
+            if (dasTimer >= getDAS()) {
+              arrTimer += dt;
+              const arr = getARR();
+              while (arrTimer >= arr) {
+                arrTimer -= arr;
+                move(moveDir, 0);
+              }
+            }
+          }
+        } else {
+          moveDir = 0;
+          dasTimer = 0;
+          arrTimer = 0;
+        }
+
+        // Hold Down Arrow = repeated soft drop (faster per level)
+        if (keyDown) {
+          softDropTimer += dt;
+          const sdi = getSoftDropInterval();
+          while (softDropTimer >= sdi) {
+            softDropTimer -= sdi;
+            softDrop();
+            if (!running) break; // might game over in lock()
+          }
+        } else {
+          softDropTimer = 0;
+        }
+
+        // Gravity drop
         dropTimer += dt;
         if (dropTimer >= interval) {
           dropTimer = 0;
           if (!move(0, 1)) lock();
         }
+
         draw();
       }
 
       requestAnimationFrame(loop);
     }
 
-    // Input
+    // Keyboard input
     document.addEventListener("keydown", (e) => {
       const k = e.key.toLowerCase();
 
       if (!running && ["arrowleft","arrowright","arrowdown","arrowup","z"," "].includes(k)) start();
 
       if (k === "p") togglePause();
-      if (k === " "){ // hard drop
+
+      if (k === " "){
         e.preventDefault();
         if (running && !paused) hardDrop();
+        draw();
+        return;
       }
+
       if (!running || paused) return;
 
-      if (k === "arrowleft") move(-1, 0);
-      else if (k === "arrowright") move(1, 0);
-      else if (k === "arrowdown") softDrop();
+      if (k === "arrowleft") keyLeft = true;
+      else if (k === "arrowright") keyRight = true;
+      else if (k === "arrowdown") keyDown = true;
       else if (k === "arrowup" || k === "z") tryRotate();
       else if (k === "c") holdPiece();
 
       draw();
+    });
+
+    document.addEventListener("keyup", (e) => {
+      const k = e.key.toLowerCase();
+      if (k === "arrowleft") keyLeft = false;
+      else if (k === "arrowright") keyRight = false;
+      else if (k === "arrowdown") keyDown = false;
     });
 
     // Buttons
@@ -1033,7 +1121,7 @@
       speedMult = Number(speedSel.value);
     });
 
-    // Touch
+    // Touch (tap moves one step; you can add press-and-hold later if you want)
     const tap = (btn, fn) => btn && btn.addEventListener("click", () => {
       if (!running) start();
       fn();
