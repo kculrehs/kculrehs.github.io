@@ -197,6 +197,7 @@
 
             <div class="hint" style="margin-top:10px;">
               Tip: Clear lines to level up. Drop speed and movement speed increase each level.
+              Game ends when the stack reaches the top.
             </div>
           </div>
 
@@ -372,7 +373,6 @@
       updatedAt: serverTimestamp()
     });
 
-    // also update score doc ign so leaderboard shows it
     const scoreRef = doc(db, "scores", currentUser.uid);
     await setDoc(scoreRef, {
       uid: currentUser.uid,
@@ -393,10 +393,6 @@
     whoami.textContent = `Signed in as ${currentIGN || "(no IGN yet)"}${email}`;
   }
 
-  // Top-100-only behavior:
-  // - We let anyone submit their personal best.
-  // - The UI only displays top 100 (Firestore query limit(100)).
-  // - If your score isn't in top 100, it simply won't appear.
   async function submitScore(score){
     if (!firebaseReady) return alert("Firebase not configured yet.");
     if (!currentUser) return alert("Please sign in first.");
@@ -405,8 +401,8 @@
 
     const ref = doc(db, "scores", currentUser.uid);
     const snap = await getDoc(ref);
-
     const prev = snap.exists() ? (snap.data().score || 0) : 0;
+
     if (score <= prev){
       return alert(`Your saved best is ${prev}. Beat it to update the leaderboard.`);
     }
@@ -456,7 +452,6 @@
       lbBody.innerHTML = `<tr><td colspan="3" class="mini">Add Firebase config to enable leaderboard.</td></tr>`;
       return;
     }
-
     setLeaderboardStatus("Live");
     const qy = query(collection(db, "scores"), orderBy("score", "desc"), limit(100));
     onSnapshot(qy, (snap) => {
@@ -470,7 +465,6 @@
     });
   }
 
-  // Auth wiring
   if (!firebaseReady){
     setAuthPill("Offline");
     signInBtn.disabled = true;
@@ -496,35 +490,24 @@
     });
 
     signInBtn.addEventListener("click", async () => {
-      try{
-        await signInWithPopup(auth, provider);
-      }catch(e){
-        console.error(e);
-        alert("Sign-in failed. Make sure Google sign-in is enabled in Firebase Auth.");
-      }
+      try{ await signInWithPopup(auth, provider); }
+      catch(e){ console.error(e); alert("Sign-in failed. Enable Google sign-in + add your GitHub domain in Firebase Auth."); }
     });
 
-    signOutBtn.addEventListener("click", async () => {
-      await signOut(auth);
-    });
-
+    signOutBtn.addEventListener("click", async () => { await signOut(auth); });
     saveIgnBtn.addEventListener("click", saveIGN);
-
-    submitScoreBtn.addEventListener("click", async () => {
-      await submitScore(lastGameScore);
-      updateSubmitUI();
-    });
+    submitScoreBtn.addEventListener("click", async () => { await submitScore(lastGameScore); updateSubmitUI(); });
 
     startLeaderboardListener();
   }
 
   // ---------------------------
-  // TETRIS GAME
+  // TETRIS GAME (VISIBLE-SPAWN VERSION)
   // ---------------------------
   (() => {
     const COLS = 10;
     const ROWS = 20;
-    const HIDDEN = 2;
+    const CELL = 36;
 
     const boardCanvas = document.getElementById("board");
     const ctx = boardCanvas.getContext("2d");
@@ -541,7 +524,7 @@
     const pauseBtn = document.getElementById("pause");
     const resetBtn = document.getElementById("reset");
 
-    // Touch buttons
+    // Touch
     const rotBtn = document.getElementById("rotBtn");
     const leftBtn = document.getElementById("leftBtn");
     const rightBtn = document.getElementById("rightBtn");
@@ -549,11 +532,8 @@
     const dropBtn = document.getElementById("dropBtn");
     const pauseBtn2 = document.getElementById("pauseBtn");
 
-    // Fit board canvas to 10x20
-    const W = COLS * 36;
-    const H = ROWS * 36;
-    boardCanvas.width = W;
-    boardCanvas.height = H;
+    boardCanvas.width = COLS * CELL;
+    boardCanvas.height = ROWS * CELL;
 
     const COLORS = {
       I: "#60a5fa",
@@ -612,14 +592,13 @@
     let lastTime = 0;
     let speedMult = Number(speedSel.value);
 
-    // Movement auto-repeat (DAS/ARR) — speeds up with level
+    // Movement auto-repeat (DAS/ARR) — faster per level
     let keyLeft = false, keyRight = false, keyDown = false;
-    let moveDir = 0;     // -1 left, +1 right
+    let moveDir = 0;
     let dasTimer = 0;
     let arrTimer = 0;
     let softDropTimer = 0;
 
-    // Utils
     const clone = (m) => m.map(r => r.slice());
     const randBag = () => {
       const types = ["I","O","T","S","Z","J","L"];
@@ -632,18 +611,9 @@
     let bag = randBag();
 
     const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-
-    function getDAS(){
-      // delay before repeating starts (sec) — lower = faster
-      return clamp(0.14 - (level - 1) * 0.004, 0.07, 0.14);
-    }
-    function getARR(){
-      // repeat interval (sec) — lower = faster
-      return clamp(0.06 - (level - 1) * 0.002, 0.025, 0.06);
-    }
-    function getSoftDropInterval(){
-      return clamp(0.05 - (level - 1) * 0.0015, 0.018, 0.05);
-    }
+    function getDAS(){ return clamp(0.14 - (level - 1) * 0.004, 0.07, 0.14); }
+    function getARR(){ return clamp(0.06 - (level - 1) * 0.002, 0.025, 0.06); }
+    function getSoftDropInterval(){ return clamp(0.05 - (level - 1) * 0.0015, 0.018, 0.05); }
 
     function getBest() {
       const v = localStorage.getItem("tetris_best");
@@ -657,20 +627,28 @@
 
     function emptyGrid() {
       const g = [];
-      for (let r = 0; r < ROWS + HIDDEN; r++) g.push(new Array(COLS).fill(null));
+      for (let r = 0; r < ROWS; r++) g.push(new Array(COLS).fill(null));
       return g;
     }
 
+    // ✅ SPAWN IN VISIBLE AREA (y=0)
     function newPiece(type) {
       const shape = clone(SHAPES[type]);
       const x = ((COLS / 2) | 0) - ((shape[0].length / 2) | 0);
-      const y = -HIDDEN;
+      const y = 0;
       return { type, shape, x, y };
     }
 
     function pullFromBag() {
       if (bag.length === 0) bag = randBag();
       return bag.pop();
+    }
+
+    function updateHUD() {
+      scoreEl.textContent = score;
+      linesEl.textContent = lines;
+      levelEl.textContent = level;
+      bestEl.textContent = best;
     }
 
     function resetGame() {
@@ -685,11 +663,9 @@
       dropTimer = 0;
       lastTime = performance.now();
 
-      // reset held keys / repeat timers
       keyLeft = keyRight = keyDown = false;
       moveDir = 0; dasTimer = 0; arrTimer = 0; softDropTimer = 0;
 
-      // leaderboard tracking
       lastGameScore = 0;
       lastGameOver = false;
       updateSubmitUI();
@@ -700,13 +676,6 @@
       pauseBtn.textContent = "Pause";
     }
 
-    function updateHUD() {
-      scoreEl.textContent = score;
-      linesEl.textContent = lines;
-      levelEl.textContent = level;
-      bestEl.textContent = best;
-    }
-
     function collide(piece) {
       const { shape, x, y } = piece;
       for (let r = 0; r < shape.length; r++) {
@@ -714,9 +683,11 @@
           if (!shape[r][c]) continue;
           const gx = x + c;
           const gy = y + r;
+
           if (gx < 0 || gx >= COLS) return true;
-          if (gy >= ROWS + HIDDEN) return true;
-          if (gy >= 0 && grid[gy][gx]) return true;
+          if (gy < 0) return true;         // should never happen now, but safe
+          if (gy >= ROWS) return true;
+          if (grid[gy][gx]) return true;
         }
       }
       return false;
@@ -729,14 +700,14 @@
           if (!shape[r][c]) continue;
           const gx = x + c;
           const gy = y + r;
-          if (gy >= 0) grid[gy][gx] = type;
+          if (gy >= 0 && gy < ROWS) grid[gy][gx] = type;
         }
       }
     }
 
     function clearLines() {
       let cleared = 0;
-      for (let r = 0; r < ROWS + HIDDEN; r++) {
+      for (let r = 0; r < ROWS; r++) {
         if (grid[r].every(v => v !== null)) {
           grid.splice(r, 1);
           grid.unshift(new Array(COLS).fill(null));
@@ -796,12 +767,11 @@
       }
     }
 
+    // ✅ GAME OVER when top row gets occupied
     function isStackOverflow() {
-    // End game when blocks reach the top visible row
-    const topVisibleRow = HIDDEN; // first row you can see
-    for (let c = 0; c < COLS; c++) {
-      if (grid[topVisibleRow][c] !== null) return true;
-    }
+      for (let c = 0; c < COLS; c++) {
+        if (grid[0][c] !== null) return true;
+      }
       return false;
     }
 
@@ -809,7 +779,6 @@
       running = false;
       paused = false;
 
-      // clear held keys so nothing “sticks”
       keyLeft = keyRight = keyDown = false;
       moveDir = 0; dasTimer = 0; arrTimer = 0; softDropTimer = 0;
 
@@ -823,23 +792,22 @@
 
     function lock() {
       merge(current);
-      clearLines();
-      holdUsed = false;
 
-      // game over if stack reaches hidden rows
+      // check overflow immediately
       if (isStackOverflow()) {
         gameOver();
         return;
       }
 
+      clearLines();
+      holdUsed = false;
+
       current = next;
       next = newPiece(pullFromBag());
       drawNext();
 
-      // safety: game over if spawn collides
-      if (collide(current)) {
-        gameOver();
-      }
+      // spawn collision ends game
+      if (collide(current)) gameOver();
     }
 
     function holdPiece() {
@@ -858,7 +826,6 @@
         hold = curType;
         current = newPiece(swap);
       }
-      // if hold spawns into collision, end it
       if (collide(current)) gameOver();
     }
 
@@ -874,11 +841,11 @@
       ctx.fillText(subtitle, boardCanvas.width / 2, boardCanvas.height / 2 + 22);
     }
 
+    // ✅ No hidden-row shift anymore
     function drawCell(x, y, color) {
-      const s = 36;
+      const s = CELL;
       const px = x * s;
-      const py = (y - HIDDEN) * s;
-      if (py < 0) return;
+      const py = y * s;
 
       ctx.fillStyle = color;
       ctx.fillRect(px + 1, py + 1, s - 2, s - 2);
@@ -898,14 +865,14 @@
       ctx.lineWidth = 1;
       for (let x = 1; x < COLS; x++) {
         ctx.beginPath();
-        ctx.moveTo(x * 36, 0);
-        ctx.lineTo(x * 36, boardCanvas.height);
+        ctx.moveTo(x * CELL, 0);
+        ctx.lineTo(x * CELL, boardCanvas.height);
         ctx.stroke();
       }
       for (let y = 1; y < ROWS; y++) {
         ctx.beginPath();
-        ctx.moveTo(0, y * 36);
-        ctx.lineTo(boardCanvas.width, y * 36);
+        ctx.moveTo(0, y * CELL);
+        ctx.lineTo(boardCanvas.width, y * CELL);
         ctx.stroke();
       }
     }
@@ -942,7 +909,8 @@
     function draw() {
       drawGrid();
 
-      for (let r = HIDDEN; r < ROWS + HIDDEN; r++) {
+      // placed blocks
+      for (let r = 0; r < ROWS; r++) {
         for (let c = 0; c < COLS; c++) {
           const v = grid[r][c];
           if (v) drawCell(c, r, COLORS[v]);
@@ -994,14 +962,15 @@
         pauseBtn.textContent = "Pause";
         lastTime = performance.now();
 
-        // leaderboard state for new run
         lastGameOver = false;
         lastGameScore = 0;
         updateSubmitUI();
 
-        // clear held keys for a clean start
         keyLeft = keyRight = keyDown = false;
         moveDir = 0; dasTimer = 0; arrTimer = 0; softDropTimer = 0;
+
+        // If spawn collides, end immediately
+        if (collide(current)) { gameOver(); return; }
 
         requestAnimationFrame(loop);
       } else if (paused) {
@@ -1023,19 +992,17 @@
       lastTime = t;
 
       if (!paused) {
-        // drop speed: increases with level, plus speed selector
         const base = Math.max(0.08, 0.75 - (level - 1) * 0.06);
         const interval = base / speedMult;
 
-        // Horizontal movement auto-repeat (DAS/ARR) — faster per level
+        // Horizontal DAS/ARR
         const wantDir = (keyRight ? 1 : 0) + (keyLeft ? -1 : 0);
-
         if (wantDir !== 0) {
           if (wantDir !== moveDir) {
             moveDir = wantDir;
             dasTimer = 0;
             arrTimer = 0;
-            move(moveDir, 0); // immediate first step
+            move(moveDir, 0);
           } else {
             dasTimer += dt;
             if (dasTimer >= getDAS()) {
@@ -1053,20 +1020,20 @@
           arrTimer = 0;
         }
 
-        // Hold Down Arrow = repeated soft drop (faster per level)
+        // Hold Down Arrow = repeated soft drop
         if (keyDown) {
           softDropTimer += dt;
           const sdi = getSoftDropInterval();
           while (softDropTimer >= sdi) {
             softDropTimer -= sdi;
             softDrop();
-            if (!running) break; // might game over in lock()
+            if (!running) break;
           }
         } else {
           softDropTimer = 0;
         }
 
-        // Gravity drop
+        // Gravity
         dropTimer += dt;
         if (dropTimer >= interval) {
           dropTimer = 0;
@@ -1079,22 +1046,22 @@
       requestAnimationFrame(loop);
     }
 
-    // Keyboard input
+    // Keyboard
     document.addEventListener("keydown", (e) => {
       const k = e.key.toLowerCase();
 
-      if (!running && ["arrowleft","arrowright","arrowdown","arrowup","z"," "].includes(k)) start();
+      if (k === "p") { togglePause(); return; }
 
-      if (k === "p") togglePause();
+      // Start with Start button only (no hidden/auto-start movement)
+      if (!running) return;
 
       if (k === " "){
         e.preventDefault();
-        if (running && !paused) hardDrop();
+        if (!paused) hardDrop();
         draw();
         return;
       }
-
-      if (!running || paused) return;
+      if (paused) return;
 
       if (k === "arrowleft") keyLeft = true;
       else if (k === "arrowright") keyRight = true;
@@ -1117,22 +1084,21 @@
     pauseBtn.addEventListener("click", togglePause);
     resetBtn.addEventListener("click", resetGame);
 
-    speedSel.addEventListener("change", () => {
-      speedMult = Number(speedSel.value);
-    });
+    speedSel.addEventListener("change", () => { speedMult = Number(speedSel.value); });
 
-    // Touch (tap moves one step; you can add press-and-hold later if you want)
+    // Touch taps
     const tap = (btn, fn) => btn && btn.addEventListener("click", () => {
-      if (!running) start();
+      if (!running) return;
+      if (paused) return;
       fn();
       draw();
     });
 
-    tap(rotBtn, () => { if (running && !paused) tryRotate(); });
-    tap(leftBtn, () => { if (running && !paused) move(-1,0); });
-    tap(rightBtn, () => { if (running && !paused) move(1,0); });
-    tap(downBtn, () => { if (running && !paused) softDrop(); });
-    tap(dropBtn, () => { if (running && !paused) hardDrop(); });
+    tap(rotBtn, () => tryRotate());
+    tap(leftBtn, () => move(-1,0));
+    tap(rightBtn, () => move(1,0));
+    tap(downBtn, () => softDrop());
+    tap(dropBtn, () => hardDrop());
     tap(pauseBtn2, () => togglePause());
 
     // Init
@@ -1142,4 +1108,3 @@
 </script>
 </body>
 </html>
-
