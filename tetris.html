@@ -797,11 +797,11 @@
     }
 
     function isStackOverflow() {
-      for (let r = 0; r < HIDDEN; r++) {
-        for (let c = 0; c < COLS; c++) {
-          if (grid[r][c] !== null) return true;
-        }
-      }
+    // End game when blocks reach the top visible row
+    const topVisibleRow = HIDDEN; // first row you can see
+    for (let c = 0; c < COLS; c++) {
+      if (grid[topVisibleRow][c] !== null) return true;
+    }
       return false;
     }
 
@@ -1142,3 +1142,4 @@
 </script>
 </body>
 </html>
+
