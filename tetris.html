@@ -41,13 +41,14 @@
     }
     .game{
       display:grid;
-      grid-template-columns: 1fr 260px;
+      grid-template-columns: 1fr 320px;
       gap:12px;
       align-items:start;
     }
     @media (max-width: 860px){
       .game{grid-template-columns: 1fr; }
       .side{display:grid; grid-template-columns: 1fr 1fr; gap:12px;}
+      .lbBox{grid-column: 1 / -1;}
     }
     canvas{
       width:100%;
@@ -65,7 +66,7 @@
     }
     .row{display:flex; gap:10px; flex-wrap:wrap; align-items:center; justify-content:space-between}
     .controls{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
-    button, select{
+    button, select, input{
       border:1px solid rgba(255,255,255,0.12);
       background: rgba(255,255,255,0.06);
       color:var(--text);
@@ -73,12 +74,15 @@
       border-radius:12px;
       font-size:14px;
       cursor:pointer;
+      outline:none;
     }
-    button:hover, select:hover{border-color: rgba(255,255,255,0.22);}
+    input{cursor:text; width:100%;}
+    button:hover, select:hover, input:hover{border-color: rgba(255,255,255,0.22);}
     button.primary{border-color: rgba(34,197,94,0.35);}
     button.primary:hover{border-color: rgba(34,197,94,0.6);}
     button.danger{border-color: rgba(239,68,68,0.35);}
     button.danger:hover{border-color: rgba(239,68,68,0.6);}
+    button:disabled{opacity:.55; cursor:not-allowed;}
     .hint{color:var(--muted); font-size:13px; line-height:1.35}
     .kbd{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size:12px; padding:2px 6px; border-radius:6px; border:1px solid rgba(255,255,255,0.14); background: rgba(0,0,0,0.25); color: var(--text);}
     .touch{
@@ -91,6 +95,41 @@
     .touch button{width:64px; height:54px; font-size:16px; border-radius:14px;}
     .touch .col{display:grid; gap:8px;}
     @media (max-width: 680px){ .touch{display:flex;} }
+
+    .mini{font-size:12px; color:var(--muted)}
+    .pill{
+      font-size:12px; padding:4px 8px; border-radius:999px;
+      border:1px solid rgba(255,255,255,0.12);
+      background: rgba(0,0,0,0.20);
+      color: rgba(255,255,255,0.85);
+      display:inline-flex; gap:8px; align-items:center;
+    }
+    .statusLine{
+      display:flex; gap:8px; align-items:center; flex-wrap:wrap;
+      margin-top:8px;
+    }
+    .lb{
+      margin-top:10px;
+      border:1px solid rgba(255,255,255,0.10);
+      border-radius:12px;
+      overflow:hidden;
+    }
+    .lbHeader{
+      display:flex; justify-content:space-between; align-items:center;
+      padding:10px 12px;
+      background: rgba(255,255,255,0.04);
+      border-bottom:1px solid rgba(255,255,255,0.10);
+    }
+    .lbList{
+      max-height: 360px;
+      overflow:auto;
+      background: rgba(0,0,0,0.14);
+    }
+    table{width:100%; border-collapse:collapse; font-size:13px;}
+    th, td{padding:10px 12px; border-bottom:1px solid rgba(255,255,255,0.08); text-align:left;}
+    th{position:sticky; top:0; background: rgba(15,23,42,0.95); z-index:2; font-weight:700;}
+    tr.me{background: rgba(34,197,94,0.10);}
+    .right{text-align:right;}
   </style>
 </head>
 <body>
@@ -159,530 +198,859 @@
               Tip: Clear lines to level up. Speed increases each level.
             </div>
           </div>
+
+          <!-- ACCOUNT + LEADERBOARD -->
+          <div class="box lbBox">
+            <div class="row">
+              <div style="font-weight:800;">🏆 Global Leaderboard</div>
+              <span class="pill" id="authPill">Offline</span>
+            </div>
+
+            <div class="statusLine">
+              <button class="primary" id="signInBtn">Sign in</button>
+              <button id="signOutBtn" style="display:none;">Sign out</button>
+            </div>
+
+            <div style="margin-top:10px;">
+              <div class="mini" style="margin-bottom:6px;">IGN (shown on leaderboard)</div>
+              <div class="row" style="gap:10px; align-items:stretch;">
+                <input id="ignInput" maxlength="18" placeholder="Enter IGN (ex: Redsun)" />
+                <button id="saveIgnBtn">Save</button>
+              </div>
+              <div class="mini" id="whoami" style="margin-top:6px;"></div>
+            </div>
+
+            <div class="row" style="margin-top:10px;">
+              <div class="mini" id="submitHint">Finish a game to submit your score.</div>
+              <button class="primary" id="submitScoreBtn" disabled>Submit score</button>
+            </div>
+
+            <div class="lb">
+              <div class="lbHeader">
+                <div class="mini">Top 100</div>
+                <div class="mini" id="lbStatus">Loading…</div>
+              </div>
+              <div class="lbList">
+                <table>
+                  <thead>
+                    <tr>
+                      <th style="width:64px;">#</th>
+                      <th>IGN</th>
+                      <th class="right">Score</th>
+                    </tr>
+                  </thead>
+                  <tbody id="lbBody">
+                    <tr><td colspan="3" class="mini">Loading leaderboard…</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div class="hint" style="margin-top:10px;">
+              Note: You must be signed in and have an IGN to appear on the leaderboard.
+            </div>
+          </div>
         </div>
       </div>
     </div>
   </div>
 
-<script>
-(() => {
-  // Board: 10x20 visible, plus 2 hidden rows for spawn
-  const COLS = 10;
-  const ROWS = 20;
-  const HIDDEN = 2;
-  const CELL = 36; // draw scale for main canvas (computed below)
+<script type="module">
+  // ---------------------------
+  // FIREBASE (Auth + Firestore)
+  // ---------------------------
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+  import {
+    getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+  import {
+    getFirestore, doc, getDoc, setDoc, serverTimestamp,
+    collection, query, orderBy, limit, onSnapshot
+  } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-  const boardCanvas = document.getElementById("board");
-  const ctx = boardCanvas.getContext("2d");
-  const nextCanvas = document.getElementById("next");
-  const nctx = nextCanvas.getContext("2d");
-
-  const scoreEl = document.getElementById("score");
-  const linesEl = document.getElementById("lines");
-  const levelEl = document.getElementById("level");
-  const bestEl  = document.getElementById("best");
-  const speedSel = document.getElementById("speed");
-
-  const startBtn = document.getElementById("start");
-  const pauseBtn = document.getElementById("pause");
-  const resetBtn = document.getElementById("reset");
-
-  // Touch buttons
-  const rotBtn = document.getElementById("rotBtn");
-  const leftBtn = document.getElementById("leftBtn");
-  const rightBtn = document.getElementById("rightBtn");
-  const downBtn = document.getElementById("downBtn");
-  const dropBtn = document.getElementById("dropBtn");
-  const pauseBtn2 = document.getElementById("pauseBtn");
-
-  // Fit board canvas to 10x20 at nice resolution
-  const W = COLS * 36;
-  const H = ROWS * 36;
-  boardCanvas.width = W;
-  boardCanvas.height = H;
-
-  const COLORS = {
-    I: "#60a5fa",
-    O: "#fbbf24",
-    T: "#a78bfa",
-    S: "#34d399",
-    Z: "#f87171",
-    J: "#3b82f6",
-    L: "#fb923c",
-    G: "#0b1220" // background
+  // 1) PASTE YOUR FIREBASE CONFIG HERE
+  const firebaseConfig = {
+    apiKey: "AIzaSyAkU723oSI_4wMmGtkGyuFgPOfHLnlP3cE",
+    authDomain: "redsun-tetris-leaderboard.firebaseapp.com",
+    projectId: "redsun-tetris-leaderboard",
+    storageBucket: "redsun-tetris-leaderboard.firebasestorage.app",
+    messagingSenderId: "857413426937",
+    appId: "1:857413426937:web:db155393fa7efe828a8c28",
+    measurementId: "G-YQF0ZSS7NL"
   };
 
-  const SHAPES = {
-    I: [
-      [0,0,0,0],
-      [1,1,1,1],
-      [0,0,0,0],
-      [0,0,0,0],
-    ],
-    O: [
-      [1,1],
-      [1,1],
-    ],
-    T: [
-      [0,1,0],
-      [1,1,1],
-      [0,0,0],
-    ],
-    S: [
-      [0,1,1],
-      [1,1,0],
-      [0,0,0],
-    ],
-    Z: [
-      [1,1,0],
-      [0,1,1],
-      [0,0,0],
-    ],
-    J: [
-      [1,0,0],
-      [1,1,1],
-      [0,0,0],
-    ],
-    L: [
-      [0,0,1],
-      [1,1,1],
-      [0,0,0],
-    ]
-  };
+  // If config is not filled, we keep the game working but disable leaderboard.
+  const firebaseReady = !Object.values(firebaseConfig).some(v => String(v).startsWith("PASTE_"));
 
-  // State
-  let grid, current, next, hold, holdUsed;
-  let score = 0, lines = 0, level = 1, best = 0;
-  let running = false, paused = false;
-  let dropTimer = 0;
-  let lastTime = 0;
-  let speedMult = Number(speedSel.value);
+  let app=null, auth=null, db=null, provider=null;
+  if (firebaseReady) {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+    provider = new GoogleAuthProvider();
+  }
 
-  // Utils
-  const clone = (m) => m.map(r => r.slice());
-  const randBag = () => {
-    const types = ["I","O","T","S","Z","J","L"];
-    for (let i = types.length - 1; i > 0; i--) {
-      const j = (Math.random() * (i + 1)) | 0;
-      [types[i], types[j]] = [types[j], types[i]];
+  // UI refs
+  const authPill = document.getElementById("authPill");
+  const signInBtn = document.getElementById("signInBtn");
+  const signOutBtn = document.getElementById("signOutBtn");
+  const ignInput = document.getElementById("ignInput");
+  const saveIgnBtn = document.getElementById("saveIgnBtn");
+  const whoami = document.getElementById("whoami");
+  const submitScoreBtn = document.getElementById("submitScoreBtn");
+  const submitHint = document.getElementById("submitHint");
+  const lbStatus = document.getElementById("lbStatus");
+  const lbBody = document.getElementById("lbBody");
+
+  // auth state
+  let currentUser = null;
+  let currentIGN = "";
+  let lastGameScore = 0;
+  let lastGameOver = false;
+
+  function sanitizeIGN(s){
+    // Keep it simple + safe: letters/numbers/space/_- only, trimmed, 2..18
+    const cleaned = (s || "").trim().replace(/[^\w \-]/g, "").replace(/\s+/g, " ");
+    if (cleaned.length < 2) return "";
+    return cleaned.slice(0, 18);
+  }
+
+  function setAuthPill(text){
+    authPill.textContent = text;
+    authPill.style.borderColor = text.includes("Signed in") ? "rgba(34,197,94,0.35)" : "rgba(255,255,255,0.12)";
+  }
+
+  function setLeaderboardStatus(text){
+    lbStatus.textContent = text;
+  }
+
+  function updateSubmitUI(){
+    if (!firebaseReady){
+      submitScoreBtn.disabled = true;
+      submitHint.textContent = "Leaderboard disabled (Firebase config missing).";
+      return;
     }
-    return types;
-  };
-  let bag = randBag();
-
-  function getBest() {
-    const v = localStorage.getItem("tetris_best");
-    best = v ? Number(v) : 0;
-    bestEl.textContent = best;
-  }
-  function setBest() {
-    localStorage.setItem("tetris_best", String(best));
-    bestEl.textContent = best;
-  }
-
-  function emptyGrid() {
-    const g = [];
-    for (let r = 0; r < ROWS + HIDDEN; r++) {
-      g.push(new Array(COLS).fill(null));
+    if (!currentUser){
+      submitScoreBtn.disabled = true;
+      submitHint.textContent = "Sign in to submit your score.";
+      return;
     }
-    return g;
+    if (!currentIGN){
+      submitScoreBtn.disabled = true;
+      submitHint.textContent = "Set an IGN to submit your score.";
+      return;
+    }
+    if (!lastGameOver){
+      submitScoreBtn.disabled = true;
+      submitHint.textContent = "Finish a game to submit your score.";
+      return;
+    }
+    if (lastGameScore <= 0){
+      submitScoreBtn.disabled = true;
+      submitHint.textContent = "Score must be greater than 0 to submit.";
+      return;
+    }
+    submitScoreBtn.disabled = false;
+    submitHint.textContent = `Ready to submit: ${lastGameScore}`;
   }
 
-  function newPiece(type) {
-    const shape = clone(SHAPES[type]);
-    // Spawn near top, centered
-    const x = ((COLS / 2) | 0) - ((shape[0].length / 2) | 0);
-    const y = -HIDDEN; // hidden rows above visible
-    return { type, shape, x, y };
+  async function ensureUserDoc(uid, payload){
+    const ref = doc(db, "users", uid);
+    await setDoc(ref, payload, { merge: true });
   }
 
-  function pullFromBag() {
-    if (bag.length === 0) bag = randBag();
-    return bag.pop();
+  async function saveIGN(){
+    if (!firebaseReady) return alert("Firebase not configured yet.");
+    if (!currentUser) return alert("Please sign in first.");
+    const ign = sanitizeIGN(ignInput.value);
+    if (!ign) return alert("IGN must be 2–18 characters (letters/numbers/space/_-).");
+    currentIGN = ign;
+
+    await ensureUserDoc(currentUser.uid, {
+      ign,
+      email: currentUser.email || "",
+      updatedAt: serverTimestamp()
+    });
+
+    // also update score doc ign so leaderboard shows it
+    const scoreRef = doc(db, "scores", currentUser.uid);
+    await setDoc(scoreRef, {
+      uid: currentUser.uid,
+      ign,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    renderWhoAmI();
+    updateSubmitUI();
   }
 
-  function resetGame() {
-    grid = emptyGrid();
-    score = 0; lines = 0; level = 1;
-    hold = null; holdUsed = false;
-    bag = randBag();
-    current = newPiece(pullFromBag());
-    next = newPiece(pullFromBag());
-    running = false;
-    paused = false;
-    dropTimer = 0;
-    lastTime = performance.now();
-
-    updateHUD();
-    draw();
-    drawNext();
-    pauseBtn.textContent = "Pause";
+  function renderWhoAmI(){
+    if (!currentUser){
+      whoami.textContent = "";
+      return;
+    }
+    const email = currentUser.email ? ` • ${currentUser.email}` : "";
+    whoami.textContent = `Signed in as ${currentIGN || "(no IGN yet)"}${email}`;
   }
 
-  function updateHUD() {
-    scoreEl.textContent = score;
-    linesEl.textContent = lines;
-    levelEl.textContent = level;
-    bestEl.textContent = best;
+  async function submitScore(score){
+    if (!firebaseReady) return alert("Firebase not configured yet.");
+    if (!currentUser) return alert("Please sign in first.");
+    if (!currentIGN) return alert("Please set an IGN first.");
+    if (!score || score <= 0) return alert("Score must be greater than 0.");
+
+    const ref = doc(db, "scores", currentUser.uid);
+    const snap = await getDoc(ref);
+
+    const prev = snap.exists() ? (snap.data().score || 0) : 0;
+    if (score <= prev){
+      return alert(`Your saved best is ${prev}. Beat it to update the leaderboard.`);
+    }
+
+    await setDoc(ref, {
+      uid: currentUser.uid,
+      ign: currentIGN,
+      score: score,
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+
+    alert("Score submitted! 🎉");
   }
 
-  function collide(piece) {
-    const { shape, x, y } = piece;
-    for (let r = 0; r < shape.length; r++) {
-      for (let c = 0; c < shape[r].length; c++) {
-        if (!shape[r][c]) continue;
-        const gx = x + c;
-        const gy = y + r;
-        if (gx < 0 || gx >= COLS) return true;
-        if (gy >= ROWS + HIDDEN) return true;
-        if (gy >= 0 && grid[gy][gx]) return true;
+  async function loadMyIGN(){
+    if (!firebaseReady || !currentUser) return;
+    const uref = doc(db, "users", currentUser.uid);
+    const usnap = await getDoc(uref);
+    const ign = usnap.exists() ? (usnap.data().ign || "") : "";
+    currentIGN = ign;
+    ignInput.value = ign || "";
+    renderWhoAmI();
+  }
+
+  function renderLeaderboard(rows){
+    lbBody.innerHTML = "";
+    if (!rows.length){
+      lbBody.innerHTML = `<tr><td colspan="3" class="mini">No scores yet.</td></tr>`;
+      return;
+    }
+    rows.forEach((r, idx) => {
+      const tr = document.createElement("tr");
+      const isMe = currentUser && r.uid === currentUser.uid;
+      if (isMe) tr.classList.add("me");
+      tr.innerHTML = `
+        <td>${idx + 1}</td>
+        <td>${(r.ign || "Unknown").toString().slice(0,18)}</td>
+        <td class="right">${Number(r.score || 0).toLocaleString()}</td>
+      `;
+      lbBody.appendChild(tr);
+    });
+  }
+
+  function startLeaderboardListener(){
+    if (!firebaseReady){
+      setLeaderboardStatus("Firebase not configured");
+      lbBody.innerHTML = `<tr><td colspan="3" class="mini">Add Firebase config to enable leaderboard.</td></tr>`;
+      return;
+    }
+
+    setLeaderboardStatus("Live");
+    const qy = query(collection(db, "scores"), orderBy("score", "desc"), limit(100));
+    onSnapshot(qy, (snap) => {
+      const rows = [];
+      snap.forEach(d => rows.push(d.data()));
+      renderLeaderboard(rows);
+    }, (err) => {
+      console.error(err);
+      setLeaderboardStatus("Error");
+      lbBody.innerHTML = `<tr><td colspan="3" class="mini">Failed to load leaderboard.</td></tr>`;
+    });
+  }
+
+  // Auth wiring
+  if (!firebaseReady){
+    setAuthPill("Offline");
+    signInBtn.disabled = true;
+    saveIgnBtn.disabled = true;
+    updateSubmitUI();
+  } else {
+    onAuthStateChanged(auth, async (user) => {
+      currentUser = user || null;
+      if (currentUser){
+        setAuthPill("Signed in");
+        signInBtn.style.display = "none";
+        signOutBtn.style.display = "inline-block";
+        await loadMyIGN();
+      } else {
+        setAuthPill("Offline");
+        signInBtn.style.display = "inline-block";
+        signOutBtn.style.display = "none";
+        currentIGN = "";
+        ignInput.value = "";
+        whoami.textContent = "";
       }
-    }
-    return false;
-  }
+      updateSubmitUI();
+    });
 
-  function merge(piece) {
-    const { shape, x, y, type } = piece;
-    for (let r = 0; r < shape.length; r++) {
-      for (let c = 0; c < shape[r].length; c++) {
-        if (!shape[r][c]) continue;
-        const gx = x + c;
-        const gy = y + r;
-        if (gy >= 0) grid[gy][gx] = type;
+    signInBtn.addEventListener("click", async () => {
+      try{
+        await signInWithPopup(auth, provider);
+      }catch(e){
+        console.error(e);
+        alert("Sign-in failed. Make sure Google sign-in is enabled in Firebase Auth.");
       }
-    }
+    });
+
+    signOutBtn.addEventListener("click", async () => {
+      await signOut(auth);
+    });
+
+    saveIgnBtn.addEventListener("click", saveIGN);
+
+    submitScoreBtn.addEventListener("click", async () => {
+      await submitScore(lastGameScore);
+      // after submit, keep button enabled only if you beat it again later
+      updateSubmitUI();
+    });
+
+    startLeaderboardListener();
   }
 
-  function clearLines() {
-    let cleared = 0;
-    for (let r = 0; r < ROWS + HIDDEN; r++) {
-      if (grid[r].every(v => v !== null)) {
-        grid.splice(r, 1);
-        grid.unshift(new Array(COLS).fill(null));
-        cleared++;
+  // ---------------------------
+  // TETRIS GAME (your original)
+  // ---------------------------
+  (() => {
+    // Board: 10x20 visible, plus 2 hidden rows for spawn
+    const COLS = 10;
+    const ROWS = 20;
+    const HIDDEN = 2;
+
+    const boardCanvas = document.getElementById("board");
+    const ctx = boardCanvas.getContext("2d");
+    const nextCanvas = document.getElementById("next");
+    const nctx = nextCanvas.getContext("2d");
+
+    const scoreEl = document.getElementById("score");
+    const linesEl = document.getElementById("lines");
+    const levelEl = document.getElementById("level");
+    const bestEl  = document.getElementById("best");
+    const speedSel = document.getElementById("speed");
+
+    const startBtn = document.getElementById("start");
+    const pauseBtn = document.getElementById("pause");
+    const resetBtn = document.getElementById("reset");
+
+    // Touch buttons
+    const rotBtn = document.getElementById("rotBtn");
+    const leftBtn = document.getElementById("leftBtn");
+    const rightBtn = document.getElementById("rightBtn");
+    const downBtn = document.getElementById("downBtn");
+    const dropBtn = document.getElementById("dropBtn");
+    const pauseBtn2 = document.getElementById("pauseBtn");
+
+    // Fit board canvas to 10x20 at nice resolution
+    const W = COLS * 36;
+    const H = ROWS * 36;
+    boardCanvas.width = W;
+    boardCanvas.height = H;
+
+    const COLORS = {
+      I: "#60a5fa",
+      O: "#fbbf24",
+      T: "#a78bfa",
+      S: "#34d399",
+      Z: "#f87171",
+      J: "#3b82f6",
+      L: "#fb923c",
+      G: "#0b1220" // background
+    };
+
+    const SHAPES = {
+      I: [
+        [0,0,0,0],
+        [1,1,1,1],
+        [0,0,0,0],
+        [0,0,0,0],
+      ],
+      O: [
+        [1,1],
+        [1,1],
+      ],
+      T: [
+        [0,1,0],
+        [1,1,1],
+        [0,0,0],
+      ],
+      S: [
+        [0,1,1],
+        [1,1,0],
+        [0,0,0],
+      ],
+      Z: [
+        [1,1,0],
+        [0,1,1],
+        [0,0,0],
+      ],
+      J: [
+        [1,0,0],
+        [1,1,1],
+        [0,0,0],
+      ],
+      L: [
+        [0,0,1],
+        [1,1,1],
+        [0,0,0],
+      ]
+    };
+
+    // State
+    let grid, current, next, hold, holdUsed;
+    let score = 0, lines = 0, level = 1, best = 0;
+    let running = false, paused = false;
+    let dropTimer = 0;
+    let lastTime = 0;
+    let speedMult = Number(speedSel.value);
+
+    // Utils
+    const clone = (m) => m.map(r => r.slice());
+    const randBag = () => {
+      const types = ["I","O","T","S","Z","J","L"];
+      for (let i = types.length - 1; i > 0; i--) {
+        const j = (Math.random() * (i + 1)) | 0;
+        [types[i], types[j]] = [types[j], types[i]];
       }
+      return types;
+    };
+    let bag = randBag();
+
+    function getBest() {
+      const v = localStorage.getItem("tetris_best");
+      best = v ? Number(v) : 0;
+      bestEl.textContent = best;
     }
-    if (cleared > 0) {
-      // Classic-ish scoring
-      const table = [0, 100, 300, 500, 800];
-      score += table[cleared] * level;
-      lines += cleared;
-
-      // level up every 10 lines
-      const newLevel = 1 + Math.floor(lines / 10);
-      if (newLevel !== level) level = newLevel;
-
-      if (score > best) { best = score; setBest(); }
-      updateHUD();
+    function setBest() {
+      localStorage.setItem("tetris_best", String(best));
+      bestEl.textContent = best;
     }
-  }
 
-  function rotate(shape) {
-    // Rotate clockwise
-    const N = shape.length;
-    const M = shape[0].length;
-    const out = Array.from({ length: M }, () => new Array(N).fill(0));
-    for (let r = 0; r < N; r++) for (let c = 0; c < M; c++) out[c][N - 1 - r] = shape[r][c];
-    return out;
-  }
-
-  function tryRotate() {
-    const old = current.shape;
-    const rotated = rotate(old);
-    const test = { ...current, shape: rotated };
-
-    // basic wall-kick attempts
-    const kicks = [0, -1, 1, -2, 2];
-    for (const k of kicks) {
-      const cand = { ...test, x: test.x + k };
-      if (!collide(cand)) { current = cand; return; }
+    function emptyGrid() {
+      const g = [];
+      for (let r = 0; r < ROWS + HIDDEN; r++) {
+        g.push(new Array(COLS).fill(null));
+      }
+      return g;
     }
-  }
 
-  function move(dx, dy) {
-    const test = { ...current, x: current.x + dx, y: current.y + dy };
-    if (!collide(test)) { current = test; return true; }
-    return false;
-  }
-
-  function hardDrop() {
-    let dropped = 0;
-    while (move(0, 1)) dropped++;
-    // reward a bit
-    score += dropped * 2;
-    lock();
-  }
-
-  function softDrop() {
-    if (move(0, 1)) {
-      score += 1;
-      updateHUD();
-    } else {
-      lock();
+    function newPiece(type) {
+      const shape = clone(SHAPES[type]);
+      // Spawn near top, centered
+      const x = ((COLS / 2) | 0) - ((shape[0].length / 2) | 0);
+      const y = -HIDDEN; // hidden rows above visible
+      return { type, shape, x, y };
     }
-  }
 
-  function lock() {
-    merge(current);
-    clearLines();
-    holdUsed = false;
+    function pullFromBag() {
+      if (bag.length === 0) bag = randBag();
+      return bag.pop();
+    }
 
-    current = next;
-    next = newPiece(pullFromBag());
-    drawNext();
-
-    // Game over if spawn collides
-    if (collide(current)) {
+    function resetGame() {
+      grid = emptyGrid();
+      score = 0; lines = 0; level = 1;
+      hold = null; holdUsed = false;
+      bag = randBag();
+      current = newPiece(pullFromBag());
+      next = newPiece(pullFromBag());
       running = false;
       paused = false;
+      dropTimer = 0;
+      lastTime = performance.now();
+
+      // leaderboard tracking
+      lastGameScore = 0;
+      lastGameOver = false;
+      updateSubmitUI();
+
+      updateHUD();
       draw();
-      overlay("Game Over", "Press Start to play again");
+      drawNext();
+      pauseBtn.textContent = "Pause";
     }
-  }
 
-  function holdPiece() {
-    if (!running || paused) return;
-    if (holdUsed) return;
-    holdUsed = true;
+    function updateHUD() {
+      scoreEl.textContent = score;
+      linesEl.textContent = lines;
+      levelEl.textContent = level;
+      bestEl.textContent = best;
+    }
 
-    const curType = current.type;
-    if (!hold) {
-      hold = curType;
+    function collide(piece) {
+      const { shape, x, y } = piece;
+      for (let r = 0; r < shape.length; r++) {
+        for (let c = 0; c < shape[r].length; c++) {
+          if (!shape[r][c]) continue;
+          const gx = x + c;
+          const gy = y + r;
+          if (gx < 0 || gx >= COLS) return true;
+          if (gy >= ROWS + HIDDEN) return true;
+          if (gy >= 0 && grid[gy][gx]) return true;
+        }
+      }
+      return false;
+    }
+
+    function merge(piece) {
+      const { shape, x, y, type } = piece;
+      for (let r = 0; r < shape.length; r++) {
+        for (let c = 0; c < shape[r].length; c++) {
+          if (!shape[r][c]) continue;
+          const gx = x + c;
+          const gy = y + r;
+          if (gy >= 0) grid[gy][gx] = type;
+        }
+      }
+    }
+
+    function clearLines() {
+      let cleared = 0;
+      for (let r = 0; r < ROWS + HIDDEN; r++) {
+        if (grid[r].every(v => v !== null)) {
+          grid.splice(r, 1);
+          grid.unshift(new Array(COLS).fill(null));
+          cleared++;
+        }
+      }
+      if (cleared > 0) {
+        // Classic-ish scoring
+        const table = [0, 100, 300, 500, 800];
+        score += table[cleared] * level;
+        lines += cleared;
+
+        // level up every 10 lines
+        const newLevel = 1 + Math.floor(lines / 10);
+        if (newLevel !== level) level = newLevel;
+
+        if (score > best) { best = score; setBest(); }
+        updateHUD();
+      }
+    }
+
+    function rotate(shape) {
+      // Rotate clockwise
+      const N = shape.length;
+      const M = shape[0].length;
+      const out = Array.from({ length: M }, () => new Array(N).fill(0));
+      for (let r = 0; r < N; r++) for (let c = 0; c < M; c++) out[c][N - 1 - r] = shape[r][c];
+      return out;
+    }
+
+    function tryRotate() {
+      const old = current.shape;
+      const rotated = rotate(old);
+      const test = { ...current, shape: rotated };
+
+      // basic wall-kick attempts
+      const kicks = [0, -1, 1, -2, 2];
+      for (const k of kicks) {
+        const cand = { ...test, x: test.x + k };
+        if (!collide(cand)) { current = cand; return; }
+      }
+    }
+
+    function move(dx, dy) {
+      const test = { ...current, x: current.x + dx, y: current.y + dy };
+      if (!collide(test)) { current = test; return true; }
+      return false;
+    }
+
+    function hardDrop() {
+      let dropped = 0;
+      while (move(0, 1)) dropped++;
+      // reward a bit
+      score += dropped * 2;
+      lock();
+    }
+
+    function softDrop() {
+      if (move(0, 1)) {
+        score += 1;
+        updateHUD();
+      } else {
+        lock();
+      }
+    }
+
+    function lock() {
+      merge(current);
+      clearLines();
+      holdUsed = false;
+
       current = next;
       next = newPiece(pullFromBag());
       drawNext();
-    } else {
-      const swap = hold;
-      hold = curType;
-      current = newPiece(swap);
-    }
-  }
 
-  function overlay(title, subtitle) {
-    ctx.fillStyle = "rgba(0,0,0,0.55)";
-    ctx.fillRect(0, 0, boardCanvas.width, boardCanvas.height);
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 42px system-ui, sans-serif";
-    ctx.textAlign = "center";
-    ctx.fillText(title, boardCanvas.width / 2, boardCanvas.height / 2 - 10);
-    ctx.font = "16px system-ui, sans-serif";
-    ctx.fillStyle = "rgba(255,255,255,0.85)";
-    ctx.fillText(subtitle, boardCanvas.width / 2, boardCanvas.height / 2 + 22);
-  }
+      // Game over if spawn collides
+      if (collide(current)) {
+        running = false;
+        paused = false;
+        draw();
+        overlay("Game Over", "Press Start to play again");
 
-  function drawCell(x, y, color) {
-    const s = 36;
-    const px = x * s;
-    const py = (y - HIDDEN) * s; // shift hidden rows out
-    if (py < 0) return;
-
-    // block
-    ctx.fillStyle = color;
-    ctx.fillRect(px + 1, py + 1, s - 2, s - 2);
-
-    // highlight
-    ctx.fillStyle = "rgba(255,255,255,0.10)";
-    ctx.fillRect(px + 3, py + 3, s - 6, s / 3);
-
-    // shadow
-    ctx.fillStyle = "rgba(0,0,0,0.20)";
-    ctx.fillRect(px + 3, py + s - 10, s - 6, 7);
-  }
-
-  function drawGrid() {
-    ctx.fillStyle = COLORS.G;
-    ctx.fillRect(0, 0, boardCanvas.width, boardCanvas.height);
-
-    // subtle grid lines
-    ctx.strokeStyle = "rgba(255,255,255,0.06)";
-    ctx.lineWidth = 1;
-    for (let x = 1; x < COLS; x++) {
-      ctx.beginPath();
-      ctx.moveTo(x * 36, 0);
-      ctx.lineTo(x * 36, boardCanvas.height);
-      ctx.stroke();
-    }
-    for (let y = 1; y < ROWS; y++) {
-      ctx.beginPath();
-      ctx.moveTo(0, y * 36);
-      ctx.lineTo(boardCanvas.width, y * 36);
-      ctx.stroke();
-    }
-  }
-
-  function drawGhost() {
-    // show where piece lands
-    const ghost = { ...current, shape: current.shape.map(r => r.slice()) };
-    while (!collide({ ...ghost, y: ghost.y + 1 })) ghost.y++;
-    const { shape, x, y, type } = ghost;
-    ctx.save();
-    ctx.globalAlpha = 0.25;
-    for (let r = 0; r < shape.length; r++) {
-      for (let c = 0; c < shape[r].length; c++) {
-        if (!shape[r][c]) continue;
-        const gx = x + c;
-        const gy = y + r;
-        if (gy >= 0) drawCell(gx, gy, COLORS[type]);
-      }
-    }
-    ctx.restore();
-  }
-
-  function drawPiece(piece) {
-    const { shape, x, y, type } = piece;
-    for (let r = 0; r < shape.length; r++) {
-      for (let c = 0; c < shape[r].length; c++) {
-        if (!shape[r][c]) continue;
-        const gx = x + c;
-        const gy = y + r;
-        if (gy >= 0) drawCell(gx, gy, COLORS[type]);
-      }
-    }
-  }
-
-  function draw() {
-    drawGrid();
-
-    // placed blocks
-    for (let r = HIDDEN; r < ROWS + HIDDEN; r++) {
-      for (let c = 0; c < COLS; c++) {
-        const v = grid[r][c];
-        if (v) drawCell(c, r, COLORS[v]);
+        // leaderboard state
+        lastGameScore = score;
+        lastGameOver = true;
+        updateSubmitUI();
       }
     }
 
-    // ghost + current
-    drawGhost();
-    drawPiece(current);
+    function holdPiece() {
+      if (!running || paused) return;
+      if (holdUsed) return;
+      holdUsed = true;
 
-    // paused label
-    if (running && paused) overlay("Paused", "Press P or Pause to resume");
+      const curType = current.type;
+      if (!hold) {
+        hold = curType;
+        current = next;
+        next = newPiece(pullFromBag());
+        drawNext();
+      } else {
+        const swap = hold;
+        hold = curType;
+        current = newPiece(swap);
+      }
+    }
 
-    // idle message
-    if (!running) {
-      ctx.fillStyle = "rgba(255,255,255,0.80)";
-      ctx.font = "16px system-ui, sans-serif";
+    function overlay(title, subtitle) {
+      ctx.fillStyle = "rgba(0,0,0,0.55)";
+      ctx.fillRect(0, 0, boardCanvas.width, boardCanvas.height);
+      ctx.fillStyle = "#ffffff";
+      ctx.font = "bold 42px system-ui, sans-serif";
       ctx.textAlign = "center";
-      ctx.fillText("Press Start to play", boardCanvas.width / 2, 22);
+      ctx.fillText(title, boardCanvas.width / 2, boardCanvas.height / 2 - 10);
+      ctx.font = "16px system-ui, sans-serif";
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      ctx.fillText(subtitle, boardCanvas.width / 2, boardCanvas.height / 2 + 22);
     }
-  }
 
-  function drawNext() {
-    nctx.clearRect(0,0,nextCanvas.width,nextCanvas.height);
-    nctx.fillStyle = "#0b1220";
-    nctx.fillRect(0,0,nextCanvas.width,nextCanvas.height);
+    function drawCell(x, y, color) {
+      const s = 36;
+      const px = x * s;
+      const py = (y - HIDDEN) * s; // shift hidden rows out
+      if (py < 0) return;
 
-    const s = 30;
-    const shape = next.shape;
-    const type = next.type;
+      // block
+      ctx.fillStyle = color;
+      ctx.fillRect(px + 1, py + 1, s - 2, s - 2);
 
-    // center the shape
-    const w = shape[0].length;
-    const h = shape.length;
-    const ox = ((nextCanvas.width / s - w) / 2) | 0;
-    const oy = ((nextCanvas.height / s - h) / 2) | 0;
+      // highlight
+      ctx.fillStyle = "rgba(255,255,255,0.10)";
+      ctx.fillRect(px + 3, py + 3, s - 6, s / 3);
 
-    for (let r = 0; r < h; r++) {
-      for (let c = 0; c < w; c++) {
-        if (!shape[r][c]) continue;
-        nctx.fillStyle = COLORS[type];
-        nctx.fillRect((ox + c)*s + 1, (oy + r)*s + 1, s - 2, s - 2);
-        nctx.fillStyle = "rgba(255,255,255,0.10)";
-        nctx.fillRect((ox + c)*s + 3, (oy + r)*s + 3, s - 6, s/3);
+      // shadow
+      ctx.fillStyle = "rgba(0,0,0,0.20)";
+      ctx.fillRect(px + 3, py + s - 10, s - 6, 7);
+    }
+
+    function drawGrid() {
+      ctx.fillStyle = COLORS.G;
+      ctx.fillRect(0, 0, boardCanvas.width, boardCanvas.height);
+
+      // subtle grid lines
+      ctx.strokeStyle = "rgba(255,255,255,0.06)";
+      ctx.lineWidth = 1;
+      for (let x = 1; x < COLS; x++) {
+        ctx.beginPath();
+        ctx.moveTo(x * 36, 0);
+        ctx.lineTo(x * 36, boardCanvas.height);
+        ctx.stroke();
+      }
+      for (let y = 1; y < ROWS; y++) {
+        ctx.beginPath();
+        ctx.moveTo(0, y * 36);
+        ctx.lineTo(boardCanvas.width, y * 36);
+        ctx.stroke();
       }
     }
-  }
 
-  function start() {
-    if (!running) {
-      running = true;
-      paused = false;
-      pauseBtn.textContent = "Pause";
-      lastTime = performance.now();
-      requestAnimationFrame(loop);
-    } else if (paused) {
-      togglePause();
-    }
-  }
-
-  function togglePause() {
-    if (!running) return;
-    paused = !paused;
-    pauseBtn.textContent = paused ? "Resume" : "Pause";
-    draw();
-  }
-
-  function loop(t) {
-    if (!running) return;
-
-    const dt = (t - lastTime) / 1000;
-    lastTime = t;
-
-    if (!paused) {
-      // drop speed: increases with level, plus speed selector
-      const base = Math.max(0.08, 0.75 - (level - 1) * 0.06);
-      const interval = base / speedMult;
-
-      dropTimer += dt;
-      if (dropTimer >= interval) {
-        dropTimer = 0;
-        if (!move(0, 1)) lock();
+    function drawGhost() {
+      // show where piece lands
+      const ghost = { ...current, shape: current.shape.map(r => r.slice()) };
+      while (!collide({ ...ghost, y: ghost.y + 1 })) ghost.y++;
+      const { shape, x, y, type } = ghost;
+      ctx.save();
+      ctx.globalAlpha = 0.25;
+      for (let r = 0; r < shape.length; r++) {
+        for (let c = 0; c < shape[r].length; c++) {
+          if (!shape[r][c]) continue;
+          const gx = x + c;
+          const gy = y + r;
+          if (gy >= 0) drawCell(gx, gy, COLORS[type]);
+        }
       }
+      ctx.restore();
+    }
+
+    function drawPiece(piece) {
+      const { shape, x, y, type } = piece;
+      for (let r = 0; r < shape.length; r++) {
+        for (let c = 0; c < shape[r].length; c++) {
+          if (!shape[r][c]) continue;
+          const gx = x + c;
+          const gy = y + r;
+          if (gy >= 0) drawCell(gx, gy, COLORS[type]);
+        }
+      }
+    }
+
+    function draw() {
+      drawGrid();
+
+      // placed blocks
+      for (let r = HIDDEN; r < ROWS + HIDDEN; r++) {
+        for (let c = 0; c < COLS; c++) {
+          const v = grid[r][c];
+          if (v) drawCell(c, r, COLORS[v]);
+        }
+      }
+
+      // ghost + current
+      drawGhost();
+      drawPiece(current);
+
+      // paused label
+      if (running && paused) overlay("Paused", "Press P or Pause to resume");
+
+      // idle message
+      if (!running) {
+        ctx.fillStyle = "rgba(255,255,255,0.80)";
+        ctx.font = "16px system-ui, sans-serif";
+        ctx.textAlign = "center";
+        ctx.fillText("Press Start to play", boardCanvas.width / 2, 22);
+      }
+    }
+
+    function drawNext() {
+      nctx.clearRect(0,0,nextCanvas.width,nextCanvas.height);
+      nctx.fillStyle = "#0b1220";
+      nctx.fillRect(0,0,nextCanvas.width,nextCanvas.height);
+
+      const s = 30;
+      const shape = next.shape;
+      const type = next.type;
+
+      // center the shape
+      const w = shape[0].length;
+      const h = shape.length;
+      const ox = ((nextCanvas.width / s - w) / 2) | 0;
+      const oy = ((nextCanvas.height / s - h) / 2) | 0;
+
+      for (let r = 0; r < h; r++) {
+        for (let c = 0; c < w; c++) {
+          if (!shape[r][c]) continue;
+          nctx.fillStyle = COLORS[type];
+          nctx.fillRect((ox + c)*s + 1, (oy + r)*s + 1, s - 2, s - 2);
+          nctx.fillStyle = "rgba(255,255,255,0.10)";
+          nctx.fillRect((ox + c)*s + 3, (oy + r)*s + 3, s - 6, s/3);
+        }
+      }
+    }
+
+    function start() {
+      if (!running) {
+        running = true;
+        paused = false;
+        pauseBtn.textContent = "Pause";
+        lastTime = performance.now();
+
+        // leaderboard state for a new run
+        lastGameOver = false;
+        lastGameScore = 0;
+        updateSubmitUI();
+
+        requestAnimationFrame(loop);
+      } else if (paused) {
+        togglePause();
+      }
+    }
+
+    function togglePause() {
+      if (!running) return;
+      paused = !paused;
+      pauseBtn.textContent = paused ? "Resume" : "Pause";
       draw();
     }
 
-    requestAnimationFrame(loop);
-  }
+    function loop(t) {
+      if (!running) return;
 
-  // Input
-  document.addEventListener("keydown", (e) => {
-    const k = e.key.toLowerCase();
+      const dt = (t - lastTime) / 1000;
+      lastTime = t;
 
-    if (!running && ["arrowleft","arrowright","arrowdown","arrowup","z"," "].includes(k)) start();
+      if (!paused) {
+        // drop speed: increases with level, plus speed selector
+        const base = Math.max(0.08, 0.75 - (level - 1) * 0.06);
+        const interval = base / speedMult;
 
-    if (k === "p") togglePause();
-    if (k === " "){ // hard drop
-      e.preventDefault();
-      if (running && !paused) hardDrop();
+        dropTimer += dt;
+        if (dropTimer >= interval) {
+          dropTimer = 0;
+          if (!move(0, 1)) lock();
+        }
+        draw();
+      }
+
+      requestAnimationFrame(loop);
     }
-    if (!running || paused) return;
 
-    if (k === "arrowleft") move(-1, 0);
-    else if (k === "arrowright") move(1, 0);
-    else if (k === "arrowdown") softDrop();
-    else if (k === "arrowup" || k === "z") tryRotate();
-    else if (k === "c") holdPiece();
+    // Input
+    document.addEventListener("keydown", (e) => {
+      const k = e.key.toLowerCase();
 
-    draw();
-  });
+      if (!running && ["arrowleft","arrowright","arrowdown","arrowup","z"," "].includes(k)) start();
 
-  // Buttons
-  startBtn.addEventListener("click", () => { resetGame(); start(); });
-  pauseBtn.addEventListener("click", togglePause);
-  resetBtn.addEventListener("click", resetGame);
+      if (k === "p") togglePause();
+      if (k === " "){ // hard drop
+        e.preventDefault();
+        if (running && !paused) hardDrop();
+      }
+      if (!running || paused) return;
 
-  speedSel.addEventListener("change", () => {
-    speedMult = Number(speedSel.value);
-  });
+      if (k === "arrowleft") move(-1, 0);
+      else if (k === "arrowright") move(1, 0);
+      else if (k === "arrowdown") softDrop();
+      else if (k === "arrowup" || k === "z") tryRotate();
+      else if (k === "c") holdPiece();
 
-  // Touch
-  const tap = (btn, fn) => btn && btn.addEventListener("click", () => {
-    if (!running) start();
-    fn();
-    draw();
-  });
+      draw();
+    });
 
-  tap(rotBtn, () => { if (running && !paused) tryRotate(); });
-  tap(leftBtn, () => { if (running && !paused) move(-1,0); });
-  tap(rightBtn, () => { if (running && !paused) move(1,0); });
-  tap(downBtn, () => { if (running && !paused) softDrop(); });
-  tap(dropBtn, () => { if (running && !paused) hardDrop(); });
-  tap(pauseBtn2, () => togglePause());
+    // Buttons
+    startBtn.addEventListener("click", () => { resetGame(); start(); });
+    pauseBtn.addEventListener("click", togglePause);
+    resetBtn.addEventListener("click", resetGame);
 
-  // Init
-  getBest();
-  resetGame();
-})();
+    speedSel.addEventListener("change", () => {
+      speedMult = Number(speedSel.value);
+    });
+
+    // Touch
+    const tap = (btn, fn) => btn && btn.addEventListener("click", () => {
+      if (!running) start();
+      fn();
+      draw();
+    });
+
+    tap(rotBtn, () => { if (running && !paused) tryRotate(); });
+    tap(leftBtn, () => { if (running && !paused) move(-1,0); });
+    tap(rightBtn, () => { if (running && !paused) move(1,0); });
+    tap(downBtn, () => { if (running && !paused) softDrop(); });
+    tap(dropBtn, () => { if (running && !paused) hardDrop(); });
+    tap(pauseBtn2, () => togglePause());
+
+    // Init
+    getBest();
+    resetGame();
+  })();
 </script>
 </body>
 </html>
